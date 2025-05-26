@@ -117,15 +117,7 @@
             //$ANY = /player[!/player$player_id]$ANY;
             
             /m5_SHIP_HIER
-               $ANY = /player[!/player$player_id]/ship$ANY;
-               
-               /enemy_ship[m5_SHIP_MAX:m5_SHIP_MIN]
-                  $ANY = /player[!/player$player_id]/ship/enemy_ship$ANY;
-               
-               ///bullet[2:0]
-               //   $ANY = /player[!/player$player_id]/ship/bullet$ANY;
-         
-         
+               $ANY = /player[! /player$player_id]/ship$ANY;
          
          
          // ================  PLAYER VIZ  ================
@@ -188,13 +180,13 @@
             $shield_up = $shield_counter > 8'd14;
             
             
-            /enemy_ship[m5_SHIP_MAX:m5_SHIP_MIN]
+            /enemy_ship[m5_SHIP_RANGE]
                // Any bullet hit #enemy_ship.
-               $hit = m5_repeat(m5_BULLET_CNT, ['/ship/bullet[m5_LoopCnt]/enemy_ship[#enemy_ship]$hit || ']) 1'b0;
+               $hit = m5_repeat(m5_BULLET_CNT, ['/ship/bullet[m5_LoopCnt]/enemy_ship[#enemy_ship]$hit || '])1'b0;
             
             
-            // Was shot by any enemy ship (was hit by an enemy bullet)
-            $shot = m5_repeat(m5_SHIP_CNT, ['/player/other_player/ship[m5_LoopCnt]/enemy_ship[#ship]$hit ||']) 1'b0;
+            // Was shot by any enemy ship
+            $shot = m5_repeat(m5_SHIP_CNT, ['/player[! /player$player_id]/ship[m5_LoopCnt]/enemy_ship[#ship]$hit || '])1'b0;
             // Destroyed from going out of bounds
             $out_of_bounds = $reset ? 1'b0 :
                    (>>1$xx_p >= 8'd128 && >>1$xx_p < 8'd197) ||
@@ -236,7 +228,7 @@
                                 >>1$bullet_y;
                
                
-               /enemy_ship[m5_SHIP_MAX:m5_SHIP_MIN]
+               /enemy_ship[m5_SHIP_RANGE]
                   $ANY = /player/other_player/ship[#enemy_ship]$ANY;
                   $hit = (/_top$reset || >>1$destroyed || ! /bullet>>1$bullet_exists) ? 1'b0 :
                          (/bullet>>1$bullet_dir[0] == 1'b1) ?
