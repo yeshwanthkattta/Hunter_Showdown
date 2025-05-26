@@ -1,13 +1,29 @@
 \m5_TLV_version 1d: tl-x.org
 \m5
+   / The First Annual Makerchip ASIC Showdown, Summer 2025: Space Battle
+   / This file is the library providing the content.
+   / See the repo's README.md for more information.
    use(m5-1.0)
+   
+   fn(team_tlv_url, ?TlvFile, {
+      ~if_eq(m5_TlvFile, [''], [
+         / Use default "random" opponent.
+         var(github_id, random)
+      ], [
+         / Include submitted TLV URL, reporting an error if it produces text output.
+         if_null(m4_include_lib(_team1_lib), [
+            error(['The following TL-Verilog library produced output text. Ignoring']m5_nl    m5_TlvFile)
+         ])
+      ])
+      on_return(var, github_id, m5_github_id)   /// Preserve what the library defined after it gets popped by the return.
+   })
+   
+   
+   define_hier(SHIP, 2, 0)
+   define_hier(BULLET, 2, 0)
+   
+   // Verilog sign extend.
    macro(sign_extend, ['{{$3{$1[$2]}}, $1}'])
-\SV
-   m5_makerchip_module
-
-
-
-
 
 // /-------------------------------------------+-------------------------------------------\
 // |                                                                                       |
@@ -32,11 +48,42 @@
 // |                                                                                       |
 // \-------------------------------------------+-------------------------------------------/
 
-\TLV
-   $reset = *reset;
+// Team logic providing random behavior.
+\TLV team_random()
+   /ship[*]
+      ///m4_rand($rand, 31, 0)
+      $attempt_fire = 1'b1;
+
+
+\TLV team_logic(/_top, /_name, /_showdown, _team_num)
+   /_name
+      /m5_SHIP_HIER    // So team code can use /ship[*].
+         $reset = /_top$reset;
+         `BOGUS_USE($reset)
+      m5+call(team_\m5_get_ago(github_id, _team_num))
+\TLV showdown(/_top, /_showdown, _hidden)
+   /// Each team submits a file containing a TLV macro whose name is the GitHub ID matching the
+   /// repository and the submission (omitting unsupported characters, like '-'), as:
+   /// var(github_id, xxx)
+   /// \TLV team_xxx()
+   ///    ...
    
-   /top2
-      \viz_js // ================  GRID VIZ  ================
+   /// Make sure both teams defined their github_id.
+   m5_if_neq(m5_depth_of(github_id), 2, ['m5_error(['A team failed to define github_id.'])'])
+   
+   m5+team_logic(/_top, /team0_['']_hidden, /_showdown['']_['']_hidden, 0)
+   m5+team_logic(/_top, /team1_['']_hidden, /_showdown['']_['']_hidden, 1)
+   
+   /_showdown['']_['']_hidden
+   // --->
+   //$reset = /_top$reset;
+
+   //$count[15:0] = ($reset || >>1$reset) ? 16'b0 : >>1$count + 16'b1;
+
+   // Arena background image.
+   /background
+
+      \viz_js
          box: { left: -128, top: -128, width: 256, height: 256, strokeWidth: 0 },
       
          init() // ~~~~~~ Init ~~~~~~
@@ -54,36 +101,38 @@
       
             return { background_img: background };
          }
-   
-   
+
+
    /player[1:0] // ||||||||||||||||  PLAYER LOGIC ||||||||||||||||
-      $player_id = (#player == 0);
-      $lost = (& /ship[*]$destroyed);
-      
-      
-      
-      
+      $player_id = (#player != 0);
+
       /other_player
-         /ship[1:0]
+         //$ANY = /player[!/player$player_id]$ANY;
+
+         /m5_SHIP_HIER
             $ANY = /player[!/player$player_id]/ship$ANY;
-            /bullet[2:0]
-               $ANY = /player[!/player$player_id]/ship/bullet$ANY;
-      
-      
-      
-      
+
+            /enemy_ship[m5_SHIP_MAX:m5_SHIP_MIN]
+               $ANY = /player[!/player$player_id]/ship/enemy_ship$ANY;
+
+            ///bullet[2:0]
+            //   $ANY = /player[!/player$player_id]/ship/bullet$ANY;
+
+      $lost = (& /ship[*]$destroyed);
+
       \viz_js // ================  PLAYER VIZ  ================
-         //(This is here just to visually flip the player 2 ships)
          box: { strokeWidth: 0},
          layout: { left: 256, top: 256, angle: 180 },
-      
-      
-      
-      
-      /ship[1:0] // ||||||||||||||||  SHIP LOGIC ||||||||||||||||
-         
-         // Is definable for participants {
-         $xx_a[3:0] = /top>>1$reset ? 4'd5 :
+
+      /m5_SHIP_HIER
+         $reset = /_top$reset;
+
+         // Control inputs.
+         $ANY = /player$player_id ? /_top/team1_['']_hidden/ship$ANY : /_top/team0_['']_hidden/ship$ANY;
+
+         //$xx_a[3:0] = 4'b0;
+
+         $xx_a[3:0] = >>1$reset ? 4'd5 :
             ((>>1$xx_p + 8'b10000000) > (8'd32 + 8'b10000000)) ? 4'b1111 :
             ((>>1$xx_p + 8'b10000000) < (- 8'd32 + 8'b10000000)) ? 4'b1 :
             4'b0;
@@ -128,11 +177,13 @@
                                    >>1$shield_counter - 1 :
                                 >>1$shield_counter - 1;
          $shield_up = $shield_counter > 8'd14;
-         
-         
-         
-         
+
+         //$attempt_fire = 1'b1;
+         $fire_dir[1:0] = 2'b11; //0 = right, 1 = down, 2 = left, 3 = up
+
          /bullet[2:0] // ||||||||||||||||  BULLET LOGIC ||||||||||||||||
+            $reset = /_top$reset;
+
             $can_fire = (/ship$attempt_fire && !>>1$bullet_exists && !/ship$destroyed);
             $prev_found_fire = (#bullet == 0) ? 1'b0 : /bullet[#bullet - 1]$found_fire;
             $successful_fire = $can_fire && ! $prev_found_fire;
@@ -155,8 +206,9 @@
                              ($bullet_dir == 2'b01) ? (>>1$bullet_y - 8'd16) :
                              ($bullet_dir == 2'b11) ? (>>1$bullet_y + 8'd16) :
                              >>1$bullet_y;
-            
-            $hit_enemy[1:0] = (/top$reset || !>>1$bullet_exists) ? 2'b0 :
+
+            // TODO: Replicate for each enemy ship, then concatenate.
+            $hit_enemy[1:0] = ($reset || !>>1$bullet_exists) ? 2'b0 :
                               {/player/other_player/ship[1]>>1$destroyed ? 1'b0 :
                               (>>1$bullet_dir[0] == 1'b1) ?
                                  (((/player/other_player/ship[1]>>1$xx_p + 8'b10000000) > (- >>1$bullet_x + 8'b10000000 - 8'd6)) &&
@@ -338,15 +390,17 @@
                   }
                   this.last_cycle = this.getCycle();
                }
-         
-         
-         $got_killed = /player/other_player/ship[0]/bullet[0]$hit_enemy[#ship] ||
-                       /player/other_player/ship[0]/bullet[1]$hit_enemy[#ship] ||
-                       /player/other_player/ship[0]/bullet[2]$hit_enemy[#ship] ||
-                       /player/other_player/ship[1]/bullet[0]$hit_enemy[#ship] ||
-                       /player/other_player/ship[1]/bullet[1]$hit_enemy[#ship] ||
-                       /player/other_player/ship[1]/bullet[2]$hit_enemy[#ship];
-         $hit = /top$reset ? 1'b0 :
+
+            /enemy_ship[m5_SHIP_MAX:m5_SHIP_MIN]
+               $hit = /bullet$hit_enemy[#enemy_ship];   // TODO: This becomes the logic, and $hit_enemy is a concat.
+            // $hit_enemy = /enemy[*];
+         /enemy_ship[m5_SHIP_MAX:m5_SHIP_MIN]
+            // Any bullet hit #enemy_ship.
+            $hit = m5_repeat(m5_BULLET_CNT, ['/ship/bullet[m5_LoopCnt]/enemy_ship[#ship]$hit || ']) 1'b0;
+         // I got killed by any enemy ship. (Any of the other player's ships killed me.)
+         $got_killed = m5_repeat(m5_SHIP_CNT, ['/player/other_player/ship[m5_LoopCnt]/enemy_ship[#ship]$hit || ']) 1'b0;
+
+         $hit = $reset ? 1'b0 :
                 (>>1$xx_p >= 8'd128 && >>1$xx_p < 8'd197) ? 1'b1 :
                 (>>1$xx_p < 8'd128 && >>1$xx_p > 8'd59) ? 1'b1 :
                 (>>1$yy_p >= 8'd128 && >>1$yy_p < 8'd197) ? 1'b1 :
@@ -354,10 +408,15 @@
                 $got_killed;
          $destroyed = /top$reset ? 1'b0 :
                  >>1$destroyed ? 1'b1 :
-                 $hit && !>>1$shield_up;
-         
-         
-         \viz_js // ================  SHIP VIZ  ================
+                 $hit && !>>1$shield_up;     // TODO: This seems like shields would prevent death at edges of the board.
+
+
+
+
+
+         // =====================   SHIP VIZ   =====================
+
+         \viz_js
             box: { left: -128, top: -128, width: 256, height: 256, strokeWidth: 0 },
             layout: { left: 0, top: 0 },
          
@@ -922,16 +981,16 @@
                }
             this.last_cycle = this.getCycle();
             }
-   
+
    $win_id[1:0] = /player[0]$lost ?
                      /player[1]$lost ? 2'b11 :
                      2'b01 :
                   /player[1]$lost ? 2'b10 :
                   2'b00;
-   
-   
-   
-   /top2
+
+
+
+   /background
       \viz_js
          box: { left: -128, top: -128, width: 256, height: 256, strokeWidth: 0 },
       
@@ -1049,13 +1108,17 @@
             if (this.last_cycle < this.getCycle()) // ------- If Moving Forward Cycles -------
             {
                //Animate endscreen if applicable:
-               if ('/top>>1$win_id'.asInt() != 0)
+               let $win_id = '/_showdown['']_['']_hidden$win_id';
+               let win_id_0 = $win_id.asInt();
+               let win_id_1 = $win_id.step(-1).asInt();
+               let win_id_2 = $win_id.step(-1).asInt();
+               if (win_id_1 != 0)
                {
                   animateEndScreen(
-                     ('/top>>1$win_id'.asInt() == 1) ? this.getObjects().p1win_img :
-                     ('/top>>1$win_id'.asInt() == 2) ? this.getObjects().p2win_img :
+                     (win_id_1 == 1) ? this.getObjects().p1win_img :
+                     (win_id_1 == 2) ? this.getObjects().p2win_img :
                      this.getObjects().tie_img,
-                     '/top>>2$win_id'.asInt()
+                     win_id_2.asInt()
                   );
                }
                else
@@ -1068,13 +1131,13 @@
             else // ------- If Moving Backwards Cycles -------
             {
                //Animate endscreen if applicable:
-               if ('/top$win_id'.asInt() != 0)
+               if (win_id.asInt() != 0)
                {
                   animateEndScreenReverse(
-                     ('/top$win_id'.asInt() == 1) ? this.getObjects().p1win_img :
-                     ('/top$win_id'.asInt() == 2) ? this.getObjects().p2win_img :
+                     (win_id == 1) ? this.getObjects().p1win_img :
+                     (win_id == 2) ? this.getObjects().p2win_img :
                      this.getObjects().tie_img,
-                     '/top>>1$win_id'.asInt()
+                     win_id_1.asInt()
                   );
                }
                else
@@ -1087,9 +1150,26 @@
       
             this.last_cycle = this.getCycle();
          }
+      // ---> End
+
+      // Assert these to end simulation (before Makerchip cycle limit).
+      *passed = | /player[*]$lost;
+      *failed = *cyc_cnt > 600;
+\SV
+   m5_team_tlv_url()
+   m5_team_tlv_url()
+   m5_makerchip_module
+\TLV
+   $reset = *reset;
    
-   // Assert these to end simulation (before Makerchip cycle limit).
-   *passed = *cyc_cnt > 600;
-   *failed = 1'b0;
+   // Instantiate the Showdown environment.
+   m5+showdown(/top, /showdown, hidden, , )
+   /**
+   m5+showdown(
+      /top, /showdown,
+      hidden, /// A tag used to hide opponent logic that will be given an unknown value in competition. Contestants, be sure your code works for a value of "something_else" as well.
+      ['https://raw.githubusercontent.com/stevehoover/drop4game/6baddeb046a3e261bb45bbc2cb879cd8c9931778/player_template.tlv'],   /// Team 1's logic (or empty for random opponent)
+      ['https://raw.githubusercontent.com/stevehoover/drop4game/6baddeb046a3e261bb45bbc2cb879cd8c9931778/player_template.tlv'])   /// Team 2's logic (or empty for random opponent)
+   **/
 \SV
    endmodule
