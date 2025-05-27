@@ -5,17 +5,21 @@
    / See the repo's README.md for more information.
    use(m5-1.0)
    
-   fn(team_tlv_url, ?TlvFile, {
-      ~if_eq(m5_TlvFile, [''], [
-         / Use default "random" opponent.
-         var(github_id, random)
-      ], [
-         / Include submitted TLV URL, reporting an error if it produces text output.
-         if_null(m4_include_lib(_team1_lib), [
-            error(['The following TL-Verilog library produced output text. Ignoring']m5_nl    m5_TlvFile)
-         ])
+   / Provide a library defining a team's control circuit, name, and ID.
+   fn(team_raw_tlv, ?TlvFile, {
+      / Include submitted TLV URL, reporting an error if it produces text output.
+      if_null(m4_include_lib(_team1_lib), [
+         error(['The following TL-Verilog library produced output text. Ignoring']m5_nl    m5_TlvFile)
       ])
       on_return(var, github_id, m5_github_id)   /// Preserve what the library defined after it gets popped by the return.
+      on_return(var, team_name, m5_team_name)   ///   "
+   })
+   
+   / Define which TLV macro to use for this team.
+   / E.g. m5_team_macro(random)  /// For predefined random opponent.
+   fn(team, TeamId, TeamName, {
+      on_return(var, github_id, m5_TeamId)
+      on_return(var, team_name, m5_TeamName)
    })
    
    
@@ -25,57 +29,69 @@
    // Verilog sign extend.
    macro(sign_extend, ['{{$3{$1[$2]}}, $1}'])
 
-// /-------------------------------------------+-------------------------------------------\
-// |                                                                                       |
-// |      Your job is to write logic to pilot your ships to destroy the enemy ships!       |
-// |                                                                                       |
-// |                                                                                       |
-// |   You can define the following signals:                                               |
-// |   - $xx_a: ship's x-axis acceleration                                                 |
-// |   - $yy_a: ship's y_axis acceleration                                                 |
-// |   - $attempt_shield: activate ship's shield if not on cooldown (The shield cools      |
-// |   down for 4 cycles, charges up for 10, and stays active depending on how long it     |
-// |   was changed up for)                                                                 |
-// |   - $attempt_fire: fire one of the ship's bullets if one is available (each ship      |
-// |   can have 3 bullets on screen at once)                                               |
-// |   - $fire_dir: the direction in which the ship fires its bullet                       |
-// |                                                                                       |
-// |   Additional information:                                                             |
-// |   - Ship dimensions are 10x10                                                         |
-// |   - Bullet dimensions are 2x16                                                        |
-// |   - Bullets move 16 tiles per cycle                                                   |
-// |                                       Good luck!                                      |
-// |                                                                                       |
-// \-------------------------------------------+-------------------------------------------/
-
 // Team logic providing random behavior.
-\TLV team_random()
+\TLV team_random(/_top)
    /ship[*]
       ///m4_rand($rand, 31, 0)
       $attempt_fire = 1'b1;
+      
+      $xx_a[3:0] = >>1$reset ? 4'd5 :
+         ((>>1$xx_p + 8'b10000000) > (8'd32 + 8'b10000000)) ? 4'b1111 :
+         ((>>1$xx_p + 8'b10000000) < (- 8'd32 + 8'b10000000)) ? 4'b1 :
+         4'b0;
+
+      $yy_a[3:0] = /top>>1$reset ? 4'b1 :
+         ((>>1$yy_p + 8'b10000000) > (- 8'd12 + 8'b10000000)) ? 4'b1111 :
+         ((>>1$yy_p + 8'b10000000) < (- 8'd48 + 8'b10000000)) ? 4'b1 :
+         4'b0;
+
+      $fire_dir[1:0] = 2'b11; //0 = right, 1 = down, 2 = left, 3 = up
+
+      $attempt_shield = 1'b1;
 
 
-\TLV team_logic(/_top, /_name, /_showdown, _team_num)
+\TLV player_logic(/_secret, /_name, _team_num)
+   m5_var(enemy_num, m5_calc(1 - _team_num))
+   m5_var(my_ship, /_secret/player[_team_num]/ship[#ship])
+   m5_var(enemy_ship, /_secret/player[m5_enemy_num]/ship[#enemy_ship])
    /_name
+      
+      // State that is accessible to contestants.
       /m5_SHIP_HIER    // So team code can use /ship[*].
-         $reset = /_top$reset;
-         `BOGUS_USE($reset)
-      m5+call(team_\m5_get_ago(github_id, _team_num))
+         $reset = /_secret$reset;
+         
+         // (Not using $ANY to avoid exposure to more.)
+         $xx_p[7:0] = m5_my_ship$xx_p;
+         $yy_p[7:0] = m5_my_ship$yy_p;
+         $xx_v[5:0] = m5_my_ship$xx_v;
+         $yy_v[5:0] = m5_my_ship$yy_v;
+         
+         `BOGUS_USE($reset $xx_p $yy_p $xx_v $yy_v)
+      /enemy_ship[m5_SHIP_RANGE]
+         $xx_p[7:0] = m5_enemy_ship$xx_p;
+         $yy_p[7:0] = m5_enemy_ship$yy_p;
+         
+         `BOGUS_USE($xx_p $yy_p)
+      
+      // ------ Instantiate Team Macro ------
+      m5+call(team_\m5_get_ago(github_id, m5_enemy_num), /_name)
 
-\TLV showdown(/_top, /_showdown, _hidden)
+\TLV showdown(/_top, /_secret)
    /// Each team submits a file containing a TLV macro whose name is the GitHub ID matching the
    /// repository and the submission (omitting unsupported characters, like '-'), as:
    /// var(github_id, xxx)
    /// \TLV team_xxx()
    ///    ...
    
-   /// Make sure both teams defined their github_id.
+   /// Make sure both teams defined their github_id and team_name.
    m5_if_neq(m5_depth_of(github_id), 2, ['m5_error(['A team failed to define github_id.'])'])
+   m5_if_neq(m5_depth_of(team_name), 2, ['m5_error(['A team failed to define their "team_name".'])'])
    
-   m5+team_logic(/_top, /team0_['']_hidden, /_showdown['']_['']_hidden, 0)
-   m5+team_logic(/_top, /team1_['']_hidden, /_showdown['']_['']_hidden, 1)
-   
-   /_showdown['']_['']_hidden
+   /_secret
+      $reset = /_top$reset;
+      m5+player_logic(/_secret, /team0, 0)
+      m5+player_logic(/_secret, /team1, 1)
+
       /background
          // ================  BACKGROUND VIZ  ================
          \viz_js
@@ -98,8 +114,7 @@
          
                return { background_img: background };
             }
-      
-      
+
       // Win logic:
       $win_id[1:0] = /player[0]$lost ?
                         /player[1]$lost ? 2'b11 :
@@ -130,33 +145,13 @@
          /m5_SHIP_HIER
             $reset = /_top$reset;
             
-            // Control inputs {
-            $ANY = /player$player_id ? /_top/team1_['']_hidden/ship$ANY : /_top/team0_['']_hidden/ship$ANY;
-            
-            $xx_a[3:0] = >>1$reset ? 4'd5 :
-               ((>>1$xx_p + 8'b10000000) > (8'd32 + 8'b10000000)) ? 4'b1111 :
-               ((>>1$xx_p + 8'b10000000) < (- 8'd32 + 8'b10000000)) ? 4'b1 :
-               4'b0;
-            
-            
-            $yy_a[3:0] = /top>>1$reset ? 4'b1 :
-               ((>>1$yy_p + 8'b10000000) > (- 8'd12 + 8'b10000000)) ? 4'b1111 :
-               ((>>1$yy_p + 8'b10000000) < (- 8'd48 + 8'b10000000)) ? 4'b1 :
-               4'b0;
-            
-            
-            //$attempt_fire = 1'b1;
-            $fire_dir[1:0] = 2'b11; //0 = right, 1 = down, 2 = left, 3 = up
-            
-            
-            $attempt_shield = /top>>1$reset ? 1'b0 :
-                              >>1$shield_counter == 8'd0;
-            // }
+            // Inputs from team logic.
+            $ANY = /player$player_id ? /_secret/team1/ship$ANY : /_secret/team0/ship$ANY;
             
             // Is accessable, but not directly modifiable for participants (includes all the bullet logic) {
             $xx_v[5:0] = /top$reset ? 6'b0 : >>1$xx_v + m5_sign_extend($xx_a, 3, 2);
             $yy_v[5:0] = /top$reset ? 6'b0 : >>1$yy_v + m5_sign_extend($yy_a, 3, 2);
-            
+            `BOGUS_USE($xx_a[3:0] $yy_a[3:0])   /// A bug workaround.
             
             $xx_p[7:0] = /top$reset ?
                             (#ship == 0) ? 8'd224 :
@@ -1066,7 +1061,7 @@
                }
          
          
-               let $win_id = '/_showdown['']_['']_hidden$win_id';
+               let $win_id = '/_secret$win_id';
                let win_id_0 = $win_id.asInt();
                let win_id_1 = $win_id.step(-1).asInt();
                let win_id_2 = $win_id.step(-1).asInt();
@@ -1119,12 +1114,46 @@
                this.last_cycle = this.getCycle();
             }
       
+      // ==================== Placard =================
+      m5_var(placard_p0_len, m5_length(m5_get_ago(team_name, 0)))
+      m5_var(placard_p1_len, m5_length(m5_get_ago(team_name, 1)))
+      m5_var(placard_len, m5_if(m5_placard_p0_len < m5_placard_p1_len, m5_placard_p1_len, m5_placard_p0_len))
+      m5_var(placard_width, m5_calc((m5_placard_len + 12) * 3))
+      /placard
+         // The "placard" showing team names.
+         \viz_js
+            box: { width: m5_placard_width, height: 19, left: -m5_calc(m5_placard_width / 2), fill: "#dbc077", stroke: "#504020", strokeWidth: 0.5 },
+            where: { left: -m5_calc(m5_placard_width / 2), top: 110, height: 20, scale: 1 }
+         /player[1:0]
+            \viz_js
+               box: { width: m5_placard_width, height: 20, left: -m5_calc(m5_placard_width / 2), strokeWidth: 0 },
+               layout: {top: 7},
+               init() {
+                  let p = this.getIndex();
+                  let playerLabel = function (fill, offset) {
+                     return new fabric.Text(
+                                `  ${p ? "Yellow: m5_get_ago(team_name, 0)" : "Green: m5_get_ago(team_name, 1)"}  `,
+                                { left: offset, top: offset,
+                                  fontFamily: "Courier New", fontSize: "5",
+                                  originX: "center",
+                                  fill
+                                }
+                            )
+                  };
+                  return {
+                     shine: playerLabel("#ffefc0", 0.15),
+                     label: playerLabel("#504020", 0),
+                  };
+               },
+               where: {left: -m5_calc(m5_placard_width / 2), top: 2.7},
+      
+
       
       
       
       // Assert these to end simulation (before Makerchip cycle limit).
-      *passed = | /player[*]>>30$lost;
-      *failed = *cyc_cnt > 600;
+      $passed = | /player[*]>>3$lost;
+      $failed = *cyc_cnt > 600;
 
 
 
@@ -1136,20 +1165,23 @@
 
 
 \SV
-   m5_team_tlv_url()
-   m5_team_tlv_url()
+   m5_team(random, Random 1)
+   m5_team(random, Random 2)
    m5_makerchip_module
 \TLV
    $reset = *reset;
    
    // Instantiate the Showdown environment.
-   m5+showdown(/top, /showdown, hidden, , )
+   m5+showdown(/top, /secret)
    /**
    m5+showdown(
       /top, /showdown,
-      hidden, /// A tag used to hide opponent logic that will be given an unknown value in competition. Contestants, be sure your code works for a value of "something_else" as well.
+      secret, /// A tag used to hide opponent logic that will be given an unknown value in competition. Contestants, be sure your code works for a value of "something_else" as well.
       ['https://raw.githubusercontent.com/stevehoover/drop4game/6baddeb046a3e261bb45bbc2cb879cd8c9931778/player_template.tlv'],   /// Team 1's logic (or empty for random opponent)
       ['https://raw.githubusercontent.com/stevehoover/drop4game/6baddeb046a3e261bb45bbc2cb879cd8c9931778/player_template.tlv'])   /// Team 2's logic (or empty for random opponent)
    **/
+   
+   *passed = /secret$passed;
+   *failed = /secret$failed;
 \SV
    endmodule
