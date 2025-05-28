@@ -32,23 +32,38 @@
 // Team logic providing random behavior.
 \TLV team_random(/_top)
    /ship[*]
+      m4_rand($rand, 31, 0, ship)
+      $xx_a[3:0] = $rand[3:0];
+      $yy_a[3:0] = $rand[7:4];
+      $attempt_fire = $rand[8];
+      $fire_dir[1:0] = $rand[10:9];
+      $attempt_shield = $rand[11];
+      $attempt_cloak = $rand[12];
+
+// Team logic providing testing behavior.
+\TLV team_test1(/_top)
+   /ship[*]
       ///m4_rand($rand, 31, 0)
-      $attempt_fire = 1'b1;
-      
       $xx_a[3:0] = >>1$reset ? 4'd5 :
          ((>>1$xx_p + 8'b10000000) > (8'd32 + 8'b10000000)) ? 4'b1111 :
          ((>>1$xx_p + 8'b10000000) < (- 8'd32 + 8'b10000000)) ? 4'b1 :
          4'b0;
-
+      
       $yy_a[3:0] = /top>>1$reset ? 4'b1 :
          ((>>1$yy_p + 8'b10000000) > (- 8'd12 + 8'b10000000)) ? 4'b1111 :
          ((>>1$yy_p + 8'b10000000) < (- 8'd48 + 8'b10000000)) ? 4'b1 :
          4'b0;
-
-      $fire_dir[1:0] = 2'b11; //0 = right, 1 = down, 2 = left, 3 = up
-
+      
+      $attempt_fire = 1'b1;
+      $fire_dir[1:0] = *cyc_cnt; //0 = right, 1 = down, 2 = left, 3 = up
+      
       $attempt_shield = 1'b1;
+      
+      $attempt_cloak = *cyc_cnt[3:2] == 2'b11;
 
+// Team logic that uses default values (and thus, the ships do absolutely nothing).
+\TLV team_sitting_duck(/_top)
+   /ship[*]
 
 \TLV player_logic(/_secret, /_name, _team_num)
    m5_var(enemy_num, m5_calc(1 - _team_num))
@@ -60,18 +75,26 @@
       /m5_SHIP_HIER    // So team code can use /ship[*].
          $reset = /_secret$reset;
          
-         // (Not using $ANY to avoid exposure to more.)
-         $xx_p[7:0] = m5_my_ship$xx_p;
-         $yy_p[7:0] = m5_my_ship$yy_p;
+         // Provide default control output signal values.
+         $ANY = /_secret/default_controls$ANY;
+         
+         // Provide visibility to own ship state. These all come from m5_\my_ship, but we don't use $ANY to avoid exposing private state.
+         // Also, we apply cloaking to position.
+         $xx_p[7:0] = m5_my_ship$cloaked ? m5_my_ship>>1$xx_p : m5_my_ship$xx_p;
+         $yy_p[7:0] = m5_my_ship$cloaked ? m5_my_ship>>1$yy_p : m5_my_ship$yy_p;
          $xx_v[5:0] = m5_my_ship$xx_v;
          $yy_v[5:0] = m5_my_ship$yy_v;
-         
-         `BOGUS_USE($reset $xx_p $yy_p $xx_v $yy_v)
+         $destroyed = m5_my_ship$destroyed;
+         // The above do not have to be used.
+         `BOGUS_USE($reset $xx_p $yy_p $xx_v $yy_v $destroyed)
+      
+      // Provide visibility to enemy ship state.
       /enemy_ship[m5_SHIP_RANGE]
          $xx_p[7:0] = m5_enemy_ship$xx_p;
          $yy_p[7:0] = m5_enemy_ship$yy_p;
-         
-         `BOGUS_USE($xx_p $yy_p)
+         $destroyed = m5_enemy_ship$destroyed;
+         // The above do not have to be used.
+         `BOGUS_USE($xx_p $yy_p $destroyed)
       
       // ------ Instantiate Team Macro ------
       m5+call(team_\m5_get_ago(github_id, m5_enemy_num), /_name)
@@ -84,10 +107,22 @@
    ///    ...
    
    /// Make sure both teams defined their github_id and team_name.
-   m5_if_neq(m5_depth_of(github_id), 2, ['m5_error(['A team failed to define github_id.'])'])
-   m5_if_neq(m5_depth_of(team_name), 2, ['m5_error(['A team failed to define their "team_name".'])'])
+   m5_if_neq(m5_depth_of(github_id), 2, ['m5_error(['Need two teams defined, but have definitions for ']m5_depth_of(github_id)[' github_id's.'])'])
+   m5_if_neq(m5_depth_of(team_name), 2, ['m5_error(['Need two teams defined, but have definitions for ']m5_depth_of(team_name)[' team_name's.'])'])
    
    /_secret
+      // These provide defaults for the team control logic.
+      /default_controls
+         $attempt_fire = 1'b0;
+         $xx_a[3:0] = 4'b0;
+         $yy_a[3:0] = 4'b0;
+         $fire_dir[1:0] = 2'b0;
+         $attempt_shield = 1'b0;
+         $attempt_cloak = 1'b0;
+         $dummy = 1'b0;  // A dummy signal to ensure something is pulled through the $ANY.
+         // These do not have to be (in fact, should not) be used.
+         `BOGUS_USE($attempt_fire $xx_a $yy_a $fire_dir $attempt_shield $attempt_cloak)
+
       $reset = /_top$reset;
       m5+player_logic(/_secret, /team0, 0)
       m5+player_logic(/_secret, /team1, 1)
@@ -147,8 +182,9 @@
             
             // Inputs from team logic.
             $ANY = /player$player_id ? /_secret/team1/ship$ANY : /_secret/team0/ship$ANY;
+            `BOGUS_USE($dummy)  // Make sure this is pulled through the $ANY chain from /defaults to prevent empty $ANYs.
             
-            // Is accessable, but not directly modifiable for participants (includes all the bullet logic) {
+            // Is accessible, but not directly modifiable for participants (includes all the bullet logic) {
             $xx_v[5:0] = /top$reset ? 6'b0 : >>1$xx_v + m5_sign_extend($xx_a, 3, 2);
             $yy_v[5:0] = /top$reset ? 6'b0 : >>1$yy_v + m5_sign_extend($yy_a, 3, 2);
             `BOGUS_USE($xx_a[3:0] $yy_a[3:0])   /// A bug workaround.
@@ -171,6 +207,8 @@
                                       >>1$shield_counter - 1 :
                                    >>1$shield_counter - 1;
             $shield_up = $shield_counter > 8'd14;
+            
+            $cloaked = $attempt_cloak && 1'b1;  // TODO: For now, always allow cloak.
             
             
             /enemy_ship[m5_SHIP_RANGE]
@@ -1195,11 +1233,16 @@
 
 
 \SV
-   m5_team(random, Random 1)
+   // Define teams.
+   ///m5_team(random, Random 1)
    m5_team(random, Random 2)
+   ///m5_team(sitting_duck, Sitting Duck)
+   m5_team(test1, Test 1)
+   
    m5_makerchip_module
 \TLV
-   $reset = *reset;
+   $raw_reset = *reset;
+   $reset = >>1$raw_reset;  // delay 1 cycle to see initial state in VIZ.
    
    // Instantiate the Showdown environment.
    m5+showdown(/top, /secret)
