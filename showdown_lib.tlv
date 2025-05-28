@@ -23,7 +23,7 @@
    })
    
    
-   define_hier(SHIP, 2, 0)
+   define_hier(SHIP, 3, 0)
    define_hier(BULLET, 3, 0)
    
    // Verilog sign extend.
@@ -153,9 +153,7 @@
             $yy_v[5:0] = /top$reset ? 6'b0 : >>1$yy_v + m5_sign_extend($yy_a, 3, 2);
             `BOGUS_USE($xx_a[3:0] $yy_a[3:0])   /// A bug workaround.
             
-            $xx_p[7:0] = /top$reset ?
-                            (#ship == 0) ? 8'd224 :
-                            8'd32 :
+            $xx_p[7:0] = /top$reset ? 8'd200 + #ship * 8'd40 :
                          $destroyed ? >>1$xx_p :
                          >>1$xx_p + m5_sign_extend($xx_v, 5, 2);
             $yy_p[7:0] = /top$reset ? 8'd208 :
@@ -555,7 +553,6 @@
                render() {
                   let player_id = this.getIndex("player");
                   let ship_id = this.getIndex();
-                  let flip = 1;
             
                   function asSigned(val, bit_count) {
                      if (val >= 2**(bit_count - 1)) {
@@ -959,8 +956,9 @@
       /background
          // ================  FOREGROUND VIZ  ================
          \viz_js
+            name: "foreground",
             box: { left: -128, top: -128, width: 256, height: 256, strokeWidth: 0 },
-         
+            
          
             // ~~~~~~~~ Init ~~~~~~~~
             init()
@@ -1072,7 +1070,6 @@
                   // Animate endscreen if applicable:
                   if (win_id_1 != 0)
                   {
-                     debugger
                      animateEndScreen(
                         (win_id_1 == 1) ? this.obj.p1win_img :
                         (win_id_1 == 2) ? this.obj.p2win_img :
@@ -1118,32 +1115,70 @@
       m5_var(placard_p0_len, m5_length(m5_get_ago(team_name, 0)))
       m5_var(placard_p1_len, m5_length(m5_get_ago(team_name, 1)))
       m5_var(placard_len, m5_if(m5_placard_p0_len < m5_placard_p1_len, m5_placard_p1_len, m5_placard_p0_len))
-      m5_var(placard_width, m5_calc((m5_placard_len + 12) * 3))
+      m5_var(placard_width, m5_calc((m5_placard_len + 12) * 4))
       /placard
          // The "placard" showing team names.
          \viz_js
             box: { width: m5_placard_width, height: 19, left: -m5_calc(m5_placard_width / 2), fill: "#dbc077", stroke: "#504020", strokeWidth: 0.5 },
+            lib: {
+               pixelFont: "Press Start 2P"
+            },
+            init () {
+               // Load pixelated font.
+               const pixelFont = {
+                  Silkscreen: "https://fonts.gstatic.com/s/silkscreen/v4/m8JXjfVPf62XiF7kO-i9YLNlaw.woff2",
+                  "Pixelify Sans": "https://fonts.gstatic.com/s/pixelifysans/v1/CHy2V-3HFUT7aC4iv1TxGDR9DHEserHN25py2TTp0E1fZZM.woff2",
+                  "Press Start 2P": "https://fonts.gstatic.com/s/pressstart2p/v15/e3t4euO8T-267oIAQAu6jDQyK3nVivM.woff2",
+               };
+               const font = new FontFace('/placard'.pixelFont, `url(${pixelFont[ '/placard'.pixelFont]})`);
+               font.load().then((loadedFont) => {
+                  // Add the font to the document
+                  document.fonts.add(loadedFont);
+                  this.getCanvas().renderAll();
+               });
+            },
             where: { left: -m5_calc(m5_placard_width / 2), top: 110, height: 20, scale: 1 }
          /player[1:0]
             \viz_js
                box: { width: m5_placard_width, height: 20, left: -m5_calc(m5_placard_width / 2), strokeWidth: 0 },
                layout: {top: 7},
                init() {
+                  const fontWidthCorrection = {
+                     Silkscreen: 1.39,
+                     "Pixelify Sans": 1.075,
+                     "Press Start 2P": 2.37,
+                  };
+                  
                   let p = this.getIndex();
-                  let playerLabel = function (fill, offset) {
-                     return new fabric.Text(
+                  let playerLabel = (fill, offset) => {
+                     ret = new fabric.Text(
                                 `  ${p ? "Yellow: m5_get_ago(team_name, 0)" : "Green: m5_get_ago(team_name, 1)"}  `,
                                 { left: offset, top: offset,
-                                  fontFamily: "Courier New", fontSize: "5",
+                                  fontFamily: '/placard'.pixelFont, fontSize: "5", fontWeight: 400,
                                   originX: "center",
                                   fill
                                 }
-                            )
+                            );
+                     ret.set({left: -ret.width * (fontWidthCorrection[ '/placard'.pixelFont] - 1) / 2});
+                     return ret;
                   };
-                  return {
-                     shine: playerLabel("#ffefc0", 0.15),
+                  ret = {
+                     //shine: playerLabel("#ffefc0", 0.15),
                      label: playerLabel("#504020", 0),
                   };
+                  /* */
+                  ret.test =
+                     new fabric.Rect({
+                          left: ret.label.left,
+                          top: ret.label.top,
+                          width: ret.label.width,
+                          height: ret.label.height,
+                          originX: ret.label.originX,
+                          originY: ret.label.originY,
+                          fill: "rgba(255, 0, 0, 0.2)"
+                     });
+                  /* */
+                  return ret;
                },
                where: {left: -m5_calc(m5_placard_width / 2), top: 2.7},
       
@@ -1154,11 +1189,6 @@
       // Assert these to end simulation (before Makerchip cycle limit).
       $passed = | /player[*]>>3$lost;
       $failed = *cyc_cnt > 600;
-
-
-
-
-
 
 
 
