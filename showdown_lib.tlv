@@ -1230,9 +1230,6 @@
                },
                where: {left: -m5_calc(m5_placard_width / 2), top: 2.7},
       
-
-      
-      
       
       // Assert these to end simulation (before Makerchip cycle limit).
       $passed = | /player[*]>>3$lost;
@@ -1241,16 +1238,15 @@
 
 
 
-
 \SV
+   m5_makerchip_module
+\TLV
    // Define teams.
    ///m5_team(random, Random 1)
    m5_team(random, Random 2)
    ///m5_team(sitting_duck, Sitting Duck)
    m5_team(test1, Test 1)
    
-   m5_makerchip_module
-\TLV
    // Instantiate the Showdown environment.
    m5+showdown(/top, /secret)
    
