@@ -29,6 +29,8 @@
    // Verilog sign extend.
    macro(sign_extend, ['{{$3{$1[$2]}}, $1}'])
 
+// --------------- Sample player logic ---------------
+
 // Team logic providing random behavior.
 \TLV team_random(/_top)
    /ship[*]
@@ -65,6 +67,11 @@
 \TLV team_sitting_duck(/_top)
    /ship[*]
 
+// ------------------- End of sample player logic -----------------------
+
+
+
+// Macro to instantiate and connect up the logic for both players.
 \TLV player_logic(/_secret, /_name, _team_num)
    m5_var(enemy_num, m5_calc(1 - _team_num))
    m5_var(my_ship, /_secret/player[_team_num]/ship[#ship])
@@ -109,6 +116,9 @@
    /// Make sure both teams defined their github_id and team_name.
    m5_if_neq(m5_depth_of(github_id), 2, ['m5_error(['Need two teams defined, but have definitions for ']m5_depth_of(github_id)[' github_id's.'])'])
    m5_if_neq(m5_depth_of(team_name), 2, ['m5_error(['Need two teams defined, but have definitions for ']m5_depth_of(team_name)[' team_name's.'])'])
+   
+   $raw_reset = *reset;
+   $reset = >>1$raw_reset;  // delay 1 cycle to see initial state in VIZ.
    
    /_secret
       // These provide defaults for the team control logic.
@@ -1241,18 +1251,8 @@
    
    m5_makerchip_module
 \TLV
-   $raw_reset = *reset;
-   $reset = >>1$raw_reset;  // delay 1 cycle to see initial state in VIZ.
-   
    // Instantiate the Showdown environment.
    m5+showdown(/top, /secret)
-   /**
-   m5+showdown(
-      /top, /showdown,
-      secret, /// A tag used to hide opponent logic that will be given an unknown value in competition. Contestants, be sure your code works for a value of "something_else" as well.
-      ['https://raw.githubusercontent.com/stevehoover/drop4game/6baddeb046a3e261bb45bbc2cb879cd8c9931778/player_template.tlv'],   /// Team 1's logic (or empty for random opponent)
-      ['https://raw.githubusercontent.com/stevehoover/drop4game/6baddeb046a3e261bb45bbc2cb879cd8c9931778/player_template.tlv'])   /// Team 2's logic (or empty for random opponent)
-   **/
    
    *passed = /secret$passed;
    *failed = /secret$failed;
