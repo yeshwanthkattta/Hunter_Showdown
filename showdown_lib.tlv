@@ -26,8 +26,16 @@
    define_hier(SHIP, 3, 0)
    define_hier(BULLET, 3, 0)
    
+   
    // Verilog sign extend.
    macro(sign_extend, ['{{$3{$1[$2]}}, $1}'])
+
+   var(reset_energy, 40)
+   var(max_energy, 80)
+   var(recoup_energy, 15)
+   var(fire_cost, 30)
+   var(cloak_cost, 15)
+   var(shield_cost, 25)
 
 
 // --------------- For the Verilog template ---------------
@@ -42,6 +50,8 @@
          .reset(/_top$reset),
          .x_v(/ship[*]$xx_v),
          .y_v(/ship[*]$yy_v),
+         .energy(/ship[*]$energy),
+         .destroyed(/ship[*]$destroyed),
          .enemy_x_p(/enemy_ship[*]$xx_p),
          .enemy_y_p(/enemy_ship[*]$yy_p),
          // Outputs:
@@ -123,15 +133,16 @@
          $yy_p[7:0] = m5_my_ship$yy_p;
          $xx_v[5:0] = m5_my_ship$xx_v;
          $yy_v[5:0] = m5_my_ship$yy_v;
+         $energy[7:0] = m5_my_ship$energy;
          $destroyed = m5_my_ship$destroyed;
          // The above do not have to be used.
-         `BOGUS_USE($reset $xx_p $yy_p $xx_v $yy_v $destroyed)
+         `BOGUS_USE($reset $xx_p $yy_p $xx_v $yy_v $energy $destroyed)
       
       // Provide visibility to enemy ship state.
       /enemy_ship[m5_SHIP_RANGE]
-         $enemy_visible = m5_enemy_ship$cloaked || m5_enemy_ship$destroyed;
+         $enemy_visible = m5_enemy_ship$do_cloak || m5_enemy_ship$destroyed;
          $xx_p[7:0] = $enemy_visible ? >>1$xx_p : m5_enemy_ship$xx_p;
-         $xx_p[7:0] = $enemy_visible ? >>1$yy_p : m5_enemy_ship$yy_p;
+         $yy_p[7:0] = $enemy_visible ? >>1$yy_p : m5_enemy_ship$yy_p;
          $destroyed = m5_enemy_ship$destroyed;
          // The above do not have to be used.
          `BOGUS_USE($xx_p $yy_p $destroyed)
@@ -228,31 +239,35 @@
             $ANY = /player$player_id ? /_secret/team1/ship$ANY : /_secret/team0/ship$ANY;
             `BOGUS_USE($dummy)  // Make sure this is pulled through the $ANY chain from /defaults to prevent empty $ANYs.
             
+            // Accelerate
+            $no_more_bullets = & /bullet[*]$bullet_exists;
+            $do_accelerate = $Energy >= $xx_a + $yy_a && ! $destroyed;
+            $energy_after_a[7:0] = $Energy - ($do_accelerate ? m5_sign_extend($xx_a, 3, 4) + m5_sign_extend($yy_a, 3, 4) : 8'b0);
+            // Fire
+            $do_fire = $attempt_fire && $energy_after_a >= 8'd\m5_fire_cost && ! $no_more_bullets && ! $destroyed;
+            $energy_after_fire[7:0] = $energy_after_a - ($do_fire ? 8'd\m5_fire_cost : 8'b0);
+            // Cloak
+            $do_cloak = $attempt_cloak && $energy_after_fire >= 8'd\m5_cloak_cost && ! $destroyed;
+            $energy_after_cloak[7:0] = $energy_after_fire - ($do_cloak ? 8'd\m5_cloak_cost : 8'b0);
+            // Shield
+            $do_shield = $attempt_shield && $energy_after_cloak >= 8'd\m5_shield_cost && ! $destroyed;
+            $energy_after_shield[7:0] = $energy_after_cloak - ($do_shield ? 8'd\m5_shield_cost : 8'b0);
+            
+            $Energy[7:0] <= $reset ? 8'd40 :
+               $energy_after_shield + 8'd\m5_recoup_energy;
+            
             // Is accessible, but not directly modifiable for participants (includes all the bullet logic) {
-            $xx_v[5:0] = /top$reset ? 6'b0 : >>1$xx_v + m5_sign_extend($xx_a, 3, 2);
-            $yy_v[5:0] = /top$reset ? 6'b0 : >>1$yy_v + m5_sign_extend($yy_a, 3, 2);
+            $xx_v[5:0] = $reset ? 6'b0 : >>1$xx_v + m5_sign_extend($xx_a, 3, 2);
+            $yy_v[5:0] = $reset ? 6'b0 : >>1$yy_v + m5_sign_extend($yy_a, 3, 2);
             `BOGUS_USE($xx_a[3:0] $yy_a[3:0])   /// A bug workaround.
             
-            $xx_p[7:0] = /top$reset ? 8'd200 + #ship * 8'd40 :
+            $xx_p[7:0] = $reset ? 8'd200 + #ship * 8'd40 :
                          $destroyed ? >>1$xx_p :
                          >>1$xx_p + m5_sign_extend($xx_v, 5, 2);
-            $yy_p[7:0] = /top$reset ? 8'd208 :
+            $yy_p[7:0] = $reset ? 8'd208 :
                          $destroyed ? >>1$yy_p :
                          >>1$yy_p + m5_sign_extend($yy_v, 5, 2);
             
-            
-            $successful_shield = $attempt_shield && !$destroyed;
-            $shield_counter[8:0] = /top>>1$reset ? 8'd14 :
-                                   $hit ? 8'd14 :
-                                   >>1$shield_counter == 8'd0 ?
-                                      $successful_shield ? 8'd20 : 8'b0 :
-                                   >>1$shield_counter <= 8'd10 ?
-                                      $successful_shield ? 8'd14 + ((8'd12 - >>1$shield_counter) / 8'd2) :
-                                      >>1$shield_counter - 1 :
-                                   >>1$shield_counter - 1;
-            $shield_up = $shield_counter > 8'd14;
-            
-            $cloaked = $attempt_cloak && 1'b1;  // TODO: For now, always allow cloak.
             
             
             /enemy_ship[m5_SHIP_RANGE]
@@ -269,9 +284,9 @@
                    (>>1$yy_p >= 8'd128 && >>1$yy_p < 8'd197) ||
                    (>>1$yy_p < 8'd128 && >>1$yy_p > 8'd59);
             $hit = $shot || $out_of_bounds;
-            $destroyed = /top$reset ? 1'b0 :
+            $destroyed = $reset ? 1'b0 :
                     >>1$destroyed ? 1'b1 :
-                    ($shot && !>>1$shield_up) ||
+                    ($shot && !>>1$do_shield) ||
                     $out_of_bounds;
             
             
@@ -319,7 +334,7 @@
                $hit_an_enemy = | /enemy_ship[*]$hit;
                
                
-               $bullet_exists = /top$reset ? 1'b0 :
+               $bullet_exists = /_top$reset ? 1'b0 :
                                 $hit_an_enemy ? 1'b0 :
                                 (>>1$bullet_exists || $successful_fire) ?
                                    ($bullet_dir[0] == 1'b0) ?
@@ -692,9 +707,9 @@
                   const shield_meter_x_offset = player_id ? 6 : -6;
                   const shield_meter_y_offset = player_id ? -10 : 10;
             
-                  const temp_last_meter = '>>1$shield_counter'.asInt();
-                  const temp_meter = '$shield_counter'.asInt();
-                  const temp_next_meter = '$shield_counter'.step().asInt();
+                  const temp_last_meter = '>>1$Energy'.asInt();
+                  const temp_meter = '$Energy'.asInt();
+                  const temp_next_meter = '$Energy'.step().asInt();
             
             
                   // If Moving Forward Cycles:
@@ -744,21 +759,8 @@
                      this.obj.shield_meter.set({
                         left: current_ship_img.left + shield_meter_x_offset,
                         top: current_ship_img.top + shield_meter_y_offset,
-                        scaleX: //If in shield_up phase:
-                                (temp_meter == 20) ? 1 :
-                                (temp_meter > 14) ?
-                                   (temp_last_meter <= 11) ? ((11 - temp_last_meter) / 11) :
-                                   ((temp_meter - 14) / 5) :
-            
-                                //If in cool-down phase:
-                                (temp_meter == 14) ? 1 :
-                                (temp_meter > 10) ? ((temp_meter - 10) / 3) :
-            
-                                //If in charge-up phase:
-                                ((10 - temp_meter) / 11),
-                        fill: (temp_meter > 14) ? "#17f7ffff" :
-                              (temp_meter > 10) ? "#de1010" :
-                              "#12e32e",
+                        scaleX: temp_meter / m5_max_energy,
+                        fill: "#12e32e",
                         visible: current_ship_img.visible
                      });
             
@@ -766,9 +768,9 @@
                      this.obj.shield_img.set({
                         left: current_ship_img.left,
                         top: current_ship_img.top,
-                        scaleX: '>>1$shield_up'.asBool() ? 1.0 : 0.0,
-                        scaleY: '>>1$shield_up'.asBool() ? 1.0 : 0.0,
-                        visible: ('$shield_up'.asBool() || '>>1$shield_up'.asBool()) && !'$destroyed'.asBool(),
+                        scaleX: '>>1$do_shield'.asBool() ? 1.0 : 0.0,
+                        scaleY: '>>1$do_shield'.asBool() ? 1.0 : 0.0,
+                        visible: ('$do_shield'.asBool() || '>>1$do_shield'.asBool()) && !'$destroyed'.asBool(),
                         opacity: 1.0
                      });
             
@@ -845,9 +847,9 @@
                      this.obj.shield_img.animate({
                         left: current_xx_p,
                         top: current_yy_p,
-                        scaleX: '$shield_up'.asBool() ? 1.0 :
+                        scaleX: '$do_shield'.asBool() ? 1.0 :
                                 '$shot'.asBool() ? 2.0 : 0.0,
-                        scaleY: '$shield_up'.asBool() ? 1.0 :
+                        scaleY: '$do_shield'.asBool() ? 1.0 :
                                 '$shot'.asBool() ? 2.0 : 0.0,
                         opacity: '$shot'.asBool() ? 0.0 : 1.0
                      }, {
@@ -956,13 +958,13 @@
                      this.obj.shield_img.set({
                         left: current_ship_img.left,
                         top: current_ship_img.top,
-                        scaleX: '$shield_up'.step().asBool() ? 1.0 :
+                        scaleX: '$do_shield'.step().asBool() ? 1.0 :
                                 '$hit'.step().asBool() ? 2.0 :
                                 0.0,
-                        scaleY: '$shield_up'.step().asBool() ? 1.0 :
+                        scaleY: '$do_shield'.step().asBool() ? 1.0 :
                                 '$hit'.step().asBool() ? 2.0 :
                                 0.0,
-                        visible: ('$shield_up'.asBool() || '$shield_up'.step().asBool()) && !'$destroyed'.step().asBool(),
+                        visible: ('$do_shield'.asBool() || '$do_shield'.step().asBool()) && !'$destroyed'.step().asBool(),
                         opacity: '$hit'.step().asBool() ? 0.0 : 1.0
                      });
             
@@ -1017,12 +1019,12 @@
                      this.obj.shield_img.animate({
                         left: current_xx_p,
                         top: current_yy_p,
-                        scaleX: '$shield_up'.asBool() ? 1.0 : 0.0,
-                        scaleY: '$shield_up'.asBool() ? 1.0 : 0.0,
+                        scaleX: '$do_shield'.asBool() ? 1.0 : 0.0,
+                        scaleY: '$do_shield'.asBool() ? 1.0 : 0.0,
                         opacity: 1.0,
                      }, {
                         duration: 180,
-                        onComplete: () => {this.obj.shield_img.set({ visible: '$shield_up'.asBool() && !'$destroyed'.asBool()})},
+                        onComplete: () => {this.obj.shield_img.set({ visible: '$do_shield'.asBool() && !'$destroyed'.asBool()})},
                         easing: fabric.util.ease.easeOutCubic
                      });
                   }
