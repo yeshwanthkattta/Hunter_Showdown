@@ -77,6 +77,8 @@
    m5_var(my_ship, /_secret/player[_team_num]/ship[#ship])
    m5_var(enemy_ship, /_secret/player[m5_enemy_num]/ship[#enemy_ship])
    /_name
+      $reset = /_secret$reset;
+      `BOGUS_USE($reset)
       
       // State that is accessible to contestants.
       /m5_SHIP_HIER    // So team code can use /ship[*].
@@ -1200,7 +1202,7 @@
                   let p = this.getIndex();
                   let playerLabel = (fill, offset) => {
                      ret = new fabric.Text(
-                                `  ${p ? "Yellow: m5_get_ago(team_name, 0)" : "Green: m5_get_ago(team_name, 1)"}  `,
+                                `  ${p ? "Green: m5_get_ago(team_name, 0)" : "Yellow: m5_get_ago(team_name, 1)"}  `,
                                 { left: offset, top: offset,
                                   fontFamily: '/placard'.pixelFont, fontSize: "5", fontWeight: 400,
                                   originX: "center",
