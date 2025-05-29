@@ -39,7 +39,7 @@
 // Replace YOUR_GITHUB_ID with your GitHub ID, excluding non-word characters (alphabetic, numeric,
 // and "_" only)
 \TLV team_YOUR_GITHUB_ID(/_top)
-   
+   /ship[*]
 
 
 

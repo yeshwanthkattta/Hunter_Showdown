@@ -29,6 +29,36 @@
    // Verilog sign extend.
    macro(sign_extend, ['{{$3{$1[$2]}}, $1}'])
 
+
+// --------------- For the Verilog template ---------------
+
+// Search and replace all YOUR_GITHUB_ID with your GitHub ID, excluding non-word characters
+// (alphabetic, numeric, and "_" only)
+\TLV verilog_wrapper(/_top, _github_id)
+   \SV_plus
+      team_['']_github_id team_['']_github_id(
+         // Inputs:
+         .clk(clk),
+         .reset(/_top$reset),
+         .x_v(/ship[*]$xx_v),
+         .y_v(/ship[*]$yy_v),
+         .enemy_x_p(/enemy_ship[*]$xx_p),
+         .enemy_y_p(/enemy_ship[*]$yy_p),
+         // Outputs:
+         .x_a($$xx_a_vect[4*m5_SHIP_CNT-1:0]),
+         .y_a($$yy_a_vect[4*m5_SHIP_CNT-1:0]),
+         .attempt_fire(/ship[*]$$attempt_fire),
+         .attempt_shield(/ship[*]$$attempt_shield),
+         .attempt_cloak(/ship[*]$$attempt_cloak),
+         .fire_dir($$fire_dir_vect[2*m5_SHIP_CNT-1:0])
+      );
+   /ship[*]
+      $xx_a[3:0] = /_top$xx_a_vect[4 * (#ship + 1) - 1 : 4 * #ship];
+      $yy_a[3:0] = /_top$yy_a_vect[4 * (#ship + 1) - 1 : 4 * #ship];
+      $fire_dir[1:0] = /_top$fire_dir_vect[2 * (#ship + 1) - 1 : 2 * #ship];
+
+
+
 // --------------- Sample player logic ---------------
 
 // Team logic providing random behavior.
@@ -73,10 +103,10 @@
 
 // Macro to instantiate and connect up the logic for both players.
 \TLV player_logic(/_secret, /_name, _team_num)
-   m5_var(enemy_num, m5_calc(1 - _team_num))
-   m5_var(my_ship, /_secret/player[_team_num]/ship[#ship])
-   m5_var(enemy_ship, /_secret/player[m5_enemy_num]/ship[#enemy_ship])
    /_name
+      m5_var(enemy_num, m5_calc(1 - _team_num))
+      m5_push_var(my_ship, /_secret/player[_team_num]/ship[#ship])
+      m5_push_var(enemy_ship, /_secret/player[m5_enemy_num]/ship[#enemy_ship])
       $reset = /_secret$reset;
       `BOGUS_USE($reset)
       
@@ -89,8 +119,8 @@
          
          // Provide visibility to own ship state. These all come from m5_\my_ship, but we don't use $ANY to avoid exposing private state.
          // Also, we apply cloaking to position.
-         $xx_p[7:0] = m5_my_ship$cloaked ? m5_my_ship>>1$xx_p : m5_my_ship$xx_p;
-         $yy_p[7:0] = m5_my_ship$cloaked ? m5_my_ship>>1$yy_p : m5_my_ship$yy_p;
+         $xx_p[7:0] = m5_my_ship$xx_p;
+         $yy_p[7:0] = m5_my_ship$yy_p;
          $xx_v[5:0] = m5_my_ship$xx_v;
          $yy_v[5:0] = m5_my_ship$yy_v;
          $destroyed = m5_my_ship$destroyed;
@@ -99,12 +129,14 @@
       
       // Provide visibility to enemy ship state.
       /enemy_ship[m5_SHIP_RANGE]
-         $xx_p[7:0] = m5_enemy_ship$xx_p;
-         $yy_p[7:0] = m5_enemy_ship$yy_p;
+         $enemy_visible = m5_enemy_ship$cloaked || m5_enemy_ship$destroyed;
+         $xx_p[7:0] = $enemy_visible ? >>1$xx_p : m5_enemy_ship$xx_p;
+         $xx_p[7:0] = $enemy_visible ? >>1$yy_p : m5_enemy_ship$yy_p;
          $destroyed = m5_enemy_ship$destroyed;
          // The above do not have to be used.
          `BOGUS_USE($xx_p $yy_p $destroyed)
       
+      m5_pop(my_ship, enemy_ship)   /// To avoid exposure to secret.
       // ------ Instantiate Team Macro ------
       m5+call(team_\m5_get_ago(github_id, m5_enemy_num), /_name)
 
