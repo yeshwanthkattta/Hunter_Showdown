@@ -30,12 +30,16 @@
    // Verilog sign extend.
    macro(sign_extend, ['{{$3{$1[$2]}}, $1}'])
 
-   var(reset_energy, 40)
-   var(max_energy, 80)
-   var(recoup_energy, 15)
-   var(fire_cost, 30)
-   var(cloak_cost, 15)
-   var(shield_cost, 25)
+   / Energy Supply
+   var(reset_energy, 40)   /// your initial energy
+   / Energy is adjusted by each of the following each cycle, in this order.
+   / Any action that would take energy below zero cannot be taken.
+   var(recoup_energy, 15)  /// the amount you recharge each clock cycle
+   var(max_energy, 80)     /// your maximum energy
+   / Acceleration costs energy equal to X acceleration + Y acceleration. If there is insufficient energy for all acceleration, no acceleration is applied.
+   var(fire_cost, 30)      /// the energy cost of firing
+   var(cloak_cost, 15)     /// the energy cost of cloaking (each active cycle)
+   var(shield_cost, 25)    /// the energy cost of using your shield (each active cycle)
 
 
 // --------------- For the Verilog template ---------------
@@ -239,10 +243,13 @@
             $ANY = /player$player_id ? /_secret/team1/ship$ANY : /_secret/team0/ship$ANY;
             `BOGUS_USE($dummy)  // Make sure this is pulled through the $ANY chain from /defaults to prevent empty $ANYs.
             
+            // Recoup energy, capped by max.
+            $recouped_energy[7:0] = $Energy + 8'd\m5_recoup_energy;
+            $maxed_energy[7:0] = ($recouped_energy > 8'd\m5_max_energy) ? 8'd\m5_max_energy : $recouped_energy;
             // Accelerate
             $no_more_bullets = & /bullet[*]$bullet_exists;
-            $do_accelerate = $Energy >= $xx_a + $yy_a && ! $destroyed;
-            $energy_after_a[7:0] = $Energy - ($do_accelerate ? m5_sign_extend($xx_a, 3, 4) + m5_sign_extend($yy_a, 3, 4) : 8'b0);
+            $do_accelerate = $maxed_energy >= $xx_a + $yy_a && ! $destroyed;
+            $energy_after_a[7:0] = $maxed_energy - ($do_accelerate ? m5_sign_extend($xx_a, 3, 4) + m5_sign_extend($yy_a, 3, 4) : 8'b0);
             // Fire
             $do_fire = $attempt_fire && $energy_after_a >= 8'd\m5_fire_cost && ! $no_more_bullets && ! $destroyed;
             $energy_after_fire[7:0] = $energy_after_a - ($do_fire ? 8'd\m5_fire_cost : 8'b0);
@@ -254,7 +261,7 @@
             $energy_after_shield[7:0] = $energy_after_cloak - ($do_shield ? 8'd\m5_shield_cost : 8'b0);
             
             $Energy[7:0] <= $reset ? 8'd40 :
-               $energy_after_shield + 8'd\m5_recoup_energy;
+               $energy_after_shield;
             
             // Is accessible, but not directly modifiable for participants (includes all the bullet logic) {
             $xx_v[5:0] = $reset ? 6'b0 : >>1$xx_v + m5_sign_extend($xx_a, 3, 2);
