@@ -25,10 +25,22 @@
    
    define_hier(SHIP, 3, 0)
    define_hier(BULLET, 3, 0)
+   /// m5_SHIP_CNT = 3, m5_SHIP_MAX = 2, m5_SHIP_MIN = 0, m5_SHIP_RANGE = 2:0, m5_SHIP_HIER = ship[2:0] 
+   
+   var(bullet_width, 2)
+   var(half_bullet_width, 1)
+   var(bullet_height, 10)
+   var(half_bullet_height, 5)
+   
+   var(ship_width, 8)
+   var(half_ship_width, 4)
+   var(ship_height, 8)
+   var(half_ship_height, 4)
+   
+   var(default_anim_duration, 250)
    
    // Verilog sign extend.
    macro(sign_extend, ['{{$3{$1[$2]}}, $1}'])
-
 
 // --------------- For the Verilog template ---------------
 
@@ -131,7 +143,7 @@
       /enemy_ship[m5_SHIP_RANGE]
          $enemy_visible = m5_enemy_ship$cloaked || m5_enemy_ship$destroyed;
          $xx_p[7:0] = $enemy_visible ? >>1$xx_p : m5_enemy_ship$xx_p;
-         $xx_p[7:0] = $enemy_visible ? >>1$yy_p : m5_enemy_ship$yy_p;
+         $yy_p[7:0] = $enemy_visible ? >>1$yy_p : m5_enemy_ship$yy_p;
          $destroyed = m5_enemy_ship$destroyed;
          // The above do not have to be used.
          `BOGUS_USE($xx_p $yy_p $destroyed)
@@ -264,10 +276,10 @@
             $shot = m5_repeat(m5_SHIP_CNT, ['/player[! /player$player_id]/ship[m5_LoopCnt]/enemy_ship[#ship]$hit || '])1'b0;
             // Destroyed from going out of bounds
             $out_of_bounds = $reset ? 1'b0 :
-                   (>>1$xx_p >= 8'd128 && >>1$xx_p < 8'd197) ||
-                   (>>1$xx_p < 8'd128 && >>1$xx_p > 8'd59) ||
-                   (>>1$yy_p >= 8'd128 && >>1$yy_p < 8'd197) ||
-                   (>>1$yy_p < 8'd128 && >>1$yy_p > 8'd59);
+                   (>>1$xx_p >= 8'd128 && >>1$xx_p < (8'd192 + 8'd\m5_half_ship_width)) ||
+                   (>>1$xx_p < 8'd128 && >>1$xx_p > (8'd64 - 8'd\m5_half_ship_width)) ||
+                   (>>1$yy_p >= 8'd128 && >>1$yy_p < (8'd192 + 8'd\m5_half_ship_height)) ||
+                   (>>1$yy_p < 8'd128 && >>1$yy_p > (8'd64 - 8'd\m5_half_ship_height));
             $hit = $shot || $out_of_bounds;
             $destroyed = /top$reset ? 1'b0 :
                     >>1$destroyed ? 1'b1 :
@@ -288,18 +300,18 @@
                
                
                $bullet_x[7:0] = $successful_fire ?
-                                   ($bullet_dir == 2'b00) ? (/ship$xx_p + 8'd13) :
-                                   ($bullet_dir == 2'b10) ? (/ship$xx_p - 8'd13) :
+                                   ($bullet_dir == 2'b00) ? (/ship$xx_p + 8'd\m5_half_ship_width + 8'd\m5_half_bullet_height) :
+                                   ($bullet_dir == 2'b10) ? (/ship$xx_p - 8'd\m5_half_ship_width - 8'd\m5_half_bullet_height) :
                                    /ship$xx_p :
-                                ($bullet_dir == 2'b00) ? (>>1$bullet_x + 8'd16) :
-                                ($bullet_dir == 2'b10) ? (>>1$bullet_x - 8'd16) :
+                                ($bullet_dir == 2'b00) ? (>>1$bullet_x + 8'd\m5_bullet_height) :
+                                ($bullet_dir == 2'b10) ? (>>1$bullet_x - 8'd\m5_bullet_height) :
                                 >>1$bullet_x;
                $bullet_y[7:0] = $successful_fire ?
-                                   ($bullet_dir == 2'b01) ? (/ship$yy_p - 8'd13) :
-                                   ($bullet_dir == 2'b11) ? (/ship$yy_p + 8'd13) :
+                                   ($bullet_dir == 2'b01) ? (/ship$yy_p - 8'd\m5_half_ship_height - 8'd\m5_half_bullet_height) :
+                                   ($bullet_dir == 2'b11) ? (/ship$yy_p + 8'd\m5_half_ship_height + 8'd\m5_half_bullet_height) :
                                    /ship$yy_p :
-                                ($bullet_dir == 2'b01) ? (>>1$bullet_y - 8'd16) :
-                                ($bullet_dir == 2'b11) ? (>>1$bullet_y + 8'd16) :
+                                ($bullet_dir == 2'b01) ? (>>1$bullet_y - 8'd\m5_bullet_height) :
+                                ($bullet_dir == 2'b11) ? (>>1$bullet_y + 8'd\m5_bullet_height) :
                                 >>1$bullet_y;
                
                
@@ -307,15 +319,15 @@
                   $ANY = /player/other_player/ship[#enemy_ship]$ANY;
                   $hit = (/_top$reset || >>1$destroyed || ! /bullet>>1$bullet_exists) ? 1'b0 :
                          (/bullet>>1$bullet_dir[0] == 1'b1) ?
-                            (((>>1$xx_p + 8'b10000000) > (- /bullet>>1$bullet_x + 8'b10000000 - 8'd6)) &&
-                             ((>>1$xx_p + 8'b10000000) < (- /bullet>>1$bullet_x + 8'b10000000 + 8'd6)) &&
-                             ((>>1$yy_p + 8'b10000000) > (- /bullet>>1$bullet_y + 8'b10000000 - 8'd13)) &&
-                             ((>>1$yy_p + 8'b10000000) < (- /bullet>>1$bullet_y + 8'b10000000 + 8'd13))
+                            (((>>1$xx_p + 8'b10000000) > (- /bullet>>1$bullet_x + 8'b10000000 - (8'd\m5_half_ship_width + 8'd\m5_half_bullet_width))) &&
+                             ((>>1$xx_p + 8'b10000000) < (- /bullet>>1$bullet_x + 8'b10000000 + (8'd\m5_half_ship_width + 8'd\m5_half_bullet_width))) &&
+                             ((>>1$yy_p + 8'b10000000) > (- /bullet>>1$bullet_y + 8'b10000000 - (8'd\m5_half_ship_height + 8'd\m5_half_bullet_height))) &&
+                             ((>>1$yy_p + 8'b10000000) < (- /bullet>>1$bullet_y + 8'b10000000 + (8'd\m5_half_ship_height + 8'd\m5_half_bullet_height)))
                             ) :
-                            (((>>1$xx_p + 8'b10000000) > (- /bullet>>1$bullet_x + 8'b10000000 - 8'd13)) &&
-                             ((>>1$xx_p + 8'b10000000) < (- /bullet>>1$bullet_x + 8'b10000000 + 8'd13)) &&
-                             ((>>1$yy_p + 8'b10000000) > (- /bullet>>1$bullet_y + 8'b10000000 - 8'd6)) &&
-                             ((>>1$yy_p + 8'b10000000) < (- /bullet>>1$bullet_y + 8'b10000000 + 8'd6)));
+                            (((>>1$xx_p + 8'b10000000) > (- /bullet>>1$bullet_x + 8'b10000000 - (8'd\m5_half_ship_width + 8'd\m5_half_bullet_height))) &&
+                             ((>>1$xx_p + 8'b10000000) < (- /bullet>>1$bullet_x + 8'b10000000 + (8'd\m5_half_ship_width + 8'd\m5_half_bullet_height))) &&
+                             ((>>1$yy_p + 8'b10000000) > (- /bullet>>1$bullet_y + 8'b10000000 - (8'd\m5_half_ship_height + 8'd\m5_half_bullet_width))) &&
+                             ((>>1$yy_p + 8'b10000000) < (- /bullet>>1$bullet_y + 8'b10000000 + (8'd\m5_half_ship_height + 8'd\m5_half_bullet_width))));
                $hit_an_enemy = | /enemy_ship[*]$hit;
                
                
@@ -323,10 +335,10 @@
                                 $hit_an_enemy ? 1'b0 :
                                 (>>1$bullet_exists || $successful_fire) ?
                                    ($bullet_dir[0] == 1'b0) ?
-                                      (($bullet_x < 8'd70) || ($bullet_x > 8'd186)) &&
-                                      (($bullet_y < 8'd65) || ($bullet_y > 8'd191)) :
-                                   (($bullet_y < 8'd70) || ($bullet_y > 8'd186)) &&
-                                   (($bullet_x < 8'd65) || ($bullet_x > 8'd191)) :
+                                      (($bullet_x < (8'd64 + 8'd\m5_half_bullet_height)) || ($bullet_x > (8'd192 - 8'd\m5_half_bullet_height))) &&
+                                      (($bullet_y < (8'd64 + 8'd\m5_half_bullet_width)) || ($bullet_y > (8'd192 - 8'd\m5_half_bullet_width))) :
+                                   (($bullet_y < (8'd64 + 8'd\m5_half_bullet_height)) || ($bullet_y > (8'd192 - 8'd\m5_half_bullet_height))) &&
+                                   (($bullet_x < (8'd64 + 8'd\m5_half_bullet_width)) || ($bullet_x > (8'd192 - 8'd\m5_half_bullet_width))) :
                                 1'b0;
                
                
@@ -347,17 +359,17 @@
                
                      // Load Bullet Image:
                      ret.bullet_img = this.newImageFromURL(
-                        (player_id ? "https://raw.githubusercontent.com/PigNeck/space-scuffle/main/bullet_sprites/p2/bullet.png" : "https://raw.githubusercontent.com/PigNeck/space-scuffle/main/bullet_sprites/p1/bullet.png"),
+                        (player_id ? "https://raw.githubusercontent.com/PigNeck/space-scuffle/main/bullet_sprites/p2/smol_bullet.png" : "https://raw.githubusercontent.com/PigNeck/space-scuffle/main/bullet_sprites/p1/smol_bullet.png"),
                         "",
                         { left: 0, top: 0,
-                           width: 3, height: 16,
+                           width: 3, height: 10,
                            imageSmoothing: false }
                      );
                      ret.bullet_img.set({ originX: "center", originY: "center" });
                
                
                      // Create Bullet Rect:
-                     ret.bullet_rect = new fabric.Rect({ width: 16, height: 2, strokeWidth: 0, fill: (player_id ? "#00ffb350" : "#ffff0050"), orginX: "center", originY: "center" });
+                     ret.bullet_rect = new fabric.Rect({ width: 10, height: 2, strokeWidth: 0, fill: (player_id ? "#00ffb350" : "#ffff0050"), orginX: "center", originY: "center" });
                      ret.bullet_rect.set({ originX: "center", originY: "center" });
                
                
@@ -411,7 +423,7 @@
                            left: asSigned('$bullet_x'.asInt(), 8),
                            top: -asSigned('$bullet_y'.asInt(), 8),
                         }, {
-                           duration: 180,
+                           duration: m5_default_anim_duration,
                            onComplete: () => {this.obj.bullet_img.set({ visible: anim_finish_visible})},
                            easing: fabric.util.ease.easeOutCubic
                         });
@@ -422,7 +434,7 @@
                            left: asSigned('$bullet_x'.asInt(), 8),
                            top: -asSigned('$bullet_y'.asInt(), 8),
                         }, {
-                           duration: 180,
+                           duration: m5_default_anim_duration,
                            onComplete: () => {this.obj.bullet_rect.set({ visible: anim_finish_visible})},
                            easing: fabric.util.ease.easeOutCubic
                         });
@@ -462,7 +474,7 @@
                            left: this.next_firing ? asSigned('/ship[ship_id]$xx_p'.asInt(), 8) : asSigned('$bullet_x'.asInt(), 8),
                            top: this.next_firing ? -asSigned('/ship[ship_id]$yy_p'.asInt(), 8) : -asSigned('$bullet_y'.asInt(), 8),
                         }, {
-                           duration: 180,
+                           duration: m5_default_anim_duration,
                            onComplete: () => {this.obj.bullet_img.set({ visible: anim_finish_visible})},
                            easing: fabric.util.ease.easeOutCubic
                         });
@@ -473,7 +485,7 @@
                            left: this.next_firing ? asSigned('/ship[ship_id]$xx_p'.asInt(), 8) : asSigned('$bullet_x'.asInt(), 8),
                            top: this.next_firing ? -asSigned('/ship[ship_id]$yy_p'.asInt(), 8) : -asSigned('$bullet_y'.asInt(), 8),
                         }, {
-                           duration: 180,
+                           duration: m5_default_anim_duration,
                            onComplete: () => {this.obj.bullet_rect.set({ visible: anim_finish_visible})},
                            easing: fabric.util.ease.easeOutCubic
                         });
@@ -502,37 +514,37 @@
             
                   // Load Ship Images:
                   ret.ship_sprite0_img = this.newImageFromURL(
-                     (player_id ? "https://raw.githubusercontent.com/PigNeck/space-scuffle/main/ship_sprites/p2/ship0.png" : "https://raw.githubusercontent.com/PigNeck/space-scuffle/main/ship_sprites/p1/ship0.png"),
+                     (player_id ? "https://raw.githubusercontent.com/PigNeck/space-scuffle/main/ship_sprites/p2/smol_ship0.png" : "https://raw.githubusercontent.com/PigNeck/space-scuffle/main/ship_sprites/p1/smol_ship0.png"),
                      "",
                      { left: 0, top: 0,
-                        width: 15, height: 18,
+                        width: 11, height: 15,
                         imageSmoothing: false }
                   );
                   ret.ship_sprite0_img.set({ originX: "center", originY: "center" });
             
                   ret.ship_sprite1_img = this.newImageFromURL(
-                     (player_id ? "https://raw.githubusercontent.com/PigNeck/space-scuffle/main/ship_sprites/p2/ship1.png" : "https://raw.githubusercontent.com/PigNeck/space-scuffle/main/ship_sprites/p1/ship1.png"),
+                     (player_id ? "https://raw.githubusercontent.com/PigNeck/space-scuffle/main/ship_sprites/p2/smol_ship1.png" : "https://raw.githubusercontent.com/PigNeck/space-scuffle/main/ship_sprites/p1/smol_ship1.png"),
                      "",
                      { left: 0, top: 0,
-                        width: 15, height: 18,
+                        width: 11, height: 15,
                         imageSmoothing: false }
                   );
                   ret.ship_sprite1_img.set({ originX: "center", originY: "center" });
             
                   ret.ship_sprite2_img = this.newImageFromURL(
-                     (player_id ? "https://raw.githubusercontent.com/PigNeck/space-scuffle/main/ship_sprites/p2/ship2.png" : "https://raw.githubusercontent.com/PigNeck/space-scuffle/main/ship_sprites/p1/ship2.png"),
+                     (player_id ? "https://raw.githubusercontent.com/PigNeck/space-scuffle/main/ship_sprites/p2/smol_ship2.png" : "https://raw.githubusercontent.com/PigNeck/space-scuffle/main/ship_sprites/p1/smol_ship2.png"),
                      "",
                      { left: 0, top: 0,
-                        width: 15, height: 18,
+                        width: 11, height: 15,
                         imageSmoothing: false }
                   );
                   ret.ship_sprite2_img.set({ originX: "center", originY: "center" });
             
                   ret.ship_sprite3_img = this.newImageFromURL(
-                     (player_id ? "https://raw.githubusercontent.com/PigNeck/space-scuffle/main/ship_sprites/p2/ship3.png" : "https://raw.githubusercontent.com/PigNeck/space-scuffle/main/ship_sprites/p1/ship3.png"),
+                     (player_id ? "https://raw.githubusercontent.com/PigNeck/space-scuffle/main/ship_sprites/p2/smol_ship3.png" : "https://raw.githubusercontent.com/PigNeck/space-scuffle/main/ship_sprites/p1/smol_ship3.png"),
                      "",
                      { left: 0, top: 0,
-                        width: 15, height: 18,
+                        width: 11, height: 15,
                         imageSmoothing: false }
                   );
                   ret.ship_sprite3_img.set({ originX: "center", originY: "center" });
@@ -551,14 +563,14 @@
             
             
                   // Create Shield Meter:
-                  ret.shield_meter_back = new fabric.Rect({ width: 12, height: 2, strokeWidth: 0, fill: "#b0b0b0ff", originX: "left", originY: "center", angle: player_id ? 180.0 : 0.0 });
-                  ret.shield_meter = new fabric.Rect({ width: 12, height: 2, strokeWidth: 0, fill: "#17f7ffff", originX: "left", originY: "center", angle: player_id ? 180.0 : 0.0 });
+                  ret.shield_meter_back = new fabric.Rect({ width: 10, height: 1.5, strokeWidth: 0, fill: "#b0b0b0ff", originX: "left", originY: "center", angle: player_id ? 180.0 : 0.0 });
+                  ret.shield_meter = new fabric.Rect({ width: 10, height: 1.5, strokeWidth: 0, fill: "#17f7ffff", originX: "left", originY: "center", angle: player_id ? 180.0 : 0.0 });
             
             
             
             
                   // Create Ship Rect:
-                  ret.ship_rect = new fabric.Rect({ width: 10, height: 10, strokeWidth: 0, fill: (player_id ? "#00ffb350" : "#ffff0050"), originX: "center", originY: "center" });
+                  ret.ship_rect = new fabric.Rect({ width: 8, height: 8, strokeWidth: 0, fill: (player_id ? "#00ffb350" : "#ffff0050"), originX: "center", originY: "center" });
             
             
             
@@ -689,8 +701,8 @@
                   const current_xx_p = asSigned('$xx_p'.asInt(), 8);
                   const current_yy_p = -asSigned('$yy_p'.asInt(), 8);
             
-                  const shield_meter_x_offset = player_id ? 6 : -6;
-                  const shield_meter_y_offset = player_id ? -10 : 10;
+                  const shield_meter_x_offset = player_id ? 5 : -5;
+                  const shield_meter_y_offset = player_id ? -9 : 9;
             
                   const temp_last_meter = '>>1$shield_counter'.asInt();
                   const temp_meter = '$shield_counter'.asInt();
@@ -778,7 +790,7 @@
                         top: current_yy_p,
                         angle: animate_angle,
                      }, {
-                        duration: 180,
+                        duration: m5_default_anim_duration,
                         easing: fabric.util.ease.easeOutCubic
                         }
                      );
@@ -809,7 +821,7 @@
                         left: current_xx_p,
                         top: current_yy_p,
                      }, {
-                        duration: 180,
+                        duration: m5_default_anim_duration,
                         onComplete: () => {this.obj.ship_rect.set({ visible: !'$destroyed'.asBool()})},
                         easing: fabric.util.ease.easeOutCubic
                      });
@@ -819,7 +831,7 @@
                         left: current_xx_p + shield_meter_x_offset,
                         top: current_yy_p + shield_meter_y_offset,
                      }, {
-                        duration: 180,
+                        duration: m5_default_anim_duration,
                         onComplete: () => {this.obj.shield_meter_back.set({ visible: !'$destroyed'.asBool()})},
                         easing: fabric.util.ease.easeOutCubic
                      });
@@ -835,7 +847,7 @@
                                 // If in charge-up phase:
                                 ((11 - temp_meter) / 11)
                      }, {
-                        duration: 180,
+                        duration: m5_default_anim_duration,
                         onComplete: () => {this.obj.shield_meter.set({ visible: !'$destroyed'.asBool() })},
                         easing: fabric.util.ease.easeOutCubic
                      });
@@ -851,7 +863,7 @@
                                 '$shot'.asBool() ? 2.0 : 0.0,
                         opacity: '$shot'.asBool() ? 0.0 : 1.0
                      }, {
-                        duration: 180,
+                        duration: m5_default_anim_duration,
                         onComplete: () => {this.obj.shield_img.set({ visible: !'$destroyed'.asBool() && this.obj.shield_img.visible })},
                         easing: fabric.util.ease.easeOutCubic
                      });
@@ -974,7 +986,7 @@
                         top: current_yy_p,
                         angle: animate_angle,
                      }, {
-                        duration: 180,
+                        duration: m5_default_anim_duration,
                         easing: fabric.util.ease.easeOutCubic
                      });
             
@@ -983,7 +995,7 @@
                         left: current_xx_p,
                         top: current_yy_p,
                      }, {
-                        duration: 180,
+                        duration: m5_default_anim_duration,
                         easing: fabric.util.ease.easeOutCubic
                      });
             
@@ -992,7 +1004,7 @@
                         left: current_xx_p + shield_meter_x_offset,
                         top: current_yy_p + shield_meter_y_offset,
                      }, {
-                        duration: 180,
+                        duration: m5_default_anim_duration,
                         onComplete: () => {this.obj.shield_meter_back.set({ visible: !'$destroyed'.asBool()})},
                         easing: fabric.util.ease.easeOutCubic
                      });
@@ -1008,7 +1020,7 @@
                                 //If in charge-up phase:
                                 ((11 - temp_meter) / 11)
                      }, {
-                        duration: 180,
+                        duration: m5_default_anim_duration,
                         onComplete: () => {this.obj.shield_meter.set({ visible: !'$destroyed'.asBool() })},
                         easing: fabric.util.ease.easeOutCubic
                      });
@@ -1021,7 +1033,7 @@
                         scaleY: '$shield_up'.asBool() ? 1.0 : 0.0,
                         opacity: 1.0,
                      }, {
-                        duration: 180,
+                        duration: m5_default_anim_duration,
                         onComplete: () => {this.obj.shield_img.set({ visible: '$shield_up'.asBool() && !'$destroyed'.asBool()})},
                         easing: fabric.util.ease.easeOutCubic
                      });
