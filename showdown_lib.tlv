@@ -26,7 +26,7 @@
    var(cloak_cost, 15)     /// the energy cost of cloaking (each active cycle)
    var(shield_cost, 25)    /// the energy cost of using your shield (each active cycle)
    
-   define_hier(BULLET, 8, 0)    /// max number of bullets
+   define_hier(BULLET, 3, 0)    /// max number of bullets
    
    / ++++++++++ End of Contest Parameters ++++++++++++
    
@@ -735,12 +735,12 @@
                   const current_xx_p = asSigned('$xx_p'.asInt(), 8);
                   const current_yy_p = -asSigned('$yy_p'.asInt(), 8);
             
-                  const shield_meter_x_offset = player_id ? 5 : -5;
-                  const shield_meter_y_offset = player_id ? -9 : 9;
+                  const energy_meter_x_offset = player_id ? 5 : -5;
+                  const energy_meter_y_offset = player_id ? -9 : 9;
             
-                  const temp_last_meter = '>>1$Energy'.asInt();
-                  const temp_meter = '$Energy'.asInt();
-                  const temp_next_meter = '$Energy'.step().asInt();
+                  const energy_last_meter = '>>1$Energy'.asInt();
+                  const energy_meter = '$Energy'.asInt();
+                  const energy_next_meter = '$Energy'.step().asInt();
             
             
                   // If Moving Forward Cycles:
@@ -780,21 +780,21 @@
                         top: current_ship_img.top,
                         visible: current_ship_img.visible
                      });
-            
+                     
                      // Set shield meter:
                      this.obj.shield_meter_back.set({
-                        left: current_ship_img.left + shield_meter_x_offset,
-                        top: current_ship_img.top + shield_meter_y_offset,
+                        left: current_ship_img.left + energy_meter_x_offset,
+                        top: current_ship_img.top + energy_meter_y_offset,
                         visible: current_ship_img.visible
                      });
                      this.obj.shield_meter.set({
-                        left: current_ship_img.left + shield_meter_x_offset,
-                        top: current_ship_img.top + shield_meter_y_offset,
-                        scaleX: temp_meter / m5_max_energy,
+                        left: current_ship_img.left + energy_meter_x_offset,
+                        top: current_ship_img.top + energy_meter_y_offset,
+                        scaleX: energy_last_meter / m5_max_energy,
                         fill: "#12e32e",
                         visible: current_ship_img.visible
                      });
-            
+                     
                      // Set shield:
                      this.obj.shield_img.set({
                         left: current_ship_img.left,
@@ -849,30 +849,22 @@
             
                      // Animate shield meter:
                      this.obj.shield_meter_back.animate({
-                        left: current_xx_p + shield_meter_x_offset,
-                        top: current_yy_p + shield_meter_y_offset,
+                        left: current_xx_p + energy_meter_x_offset,
+                        top: current_yy_p + energy_meter_y_offset,
                      }, {
                         duration: m5_default_anim_duration,
                         onComplete: () => {this.obj.shield_meter_back.set({ visible: !'$destroyed'.asBool()})},
                         easing: fabric.util.ease.easeOutCubic
                      });
                      this.obj.shield_meter.animate({
-                        left: current_xx_p + shield_meter_x_offset,
-                        top: current_yy_p + shield_meter_y_offset,
-                        scaleX: // If in shield_up phase:
-                                (temp_meter > 14) ? ((temp_meter - 15) / 5) :
-            
-                                // If in cool-down phase:
-                                (temp_meter > 10) ? ((temp_meter - 11) / 3) :
-            
-                                // If in charge-up phase:
-                                ((11 - temp_meter) / 11)
+                        left: current_xx_p + energy_meter_x_offset,
+                        top: current_yy_p + energy_meter_y_offset,
+                        scaleX: energy_meter / m5_max_energy,
                      }, {
                         duration: m5_default_anim_duration,
                         onComplete: () => {this.obj.shield_meter.set({ visible: !'$destroyed'.asBool() })},
                         easing: fabric.util.ease.easeOutCubic
                      });
-            
             
                      // Animate shield:
                      this.obj.shield_img.animate({
@@ -885,9 +877,8 @@
                         opacity: '$shot'.asBool() ? 0.0 : 1.0
                      }, {
                         duration: m5_default_anim_duration,
-                        onComplete: () => {this.obj.shield_img.set({ visible: !'$destroyed'.asBool() && this.obj.shield_img.visible })},
                         easing: fabric.util.ease.easeOutCubic
-                     });
+                     }).thenSet({ visible: !'$destroyed'.asBool() && this.obj.shield_img.visible })
                   }
             
             
@@ -959,29 +950,15 @@
             
                      // Set shield meter:
                      this.obj.shield_meter_back.set({
-                        left: current_ship_img.left + shield_meter_x_offset,
-                        top: current_ship_img.top + shield_meter_y_offset,
+                        left: current_ship_img.left + energy_meter_x_offset,
+                        top: current_ship_img.top + energy_meter_y_offset,
                         visible: current_ship_img.visible
                      });
                      this.obj.shield_meter.set({
-                        left: current_ship_img.left + shield_meter_x_offset,
-                        top: current_ship_img.top + shield_meter_y_offset,
-                        scaleX: // If in shield_up phase:
-                                (temp_meter > 15) ? ((temp_meter - 16) / 5) :
-                                (temp_meter == 15) ? 0 :
-            
-                                // If in cool-down phase:
-                                (temp_meter > 11) ? ((temp_meter - 12) / 3) :
-            
-                                // If in charge-up phase:
-                                (temp_meter > 0) ?
-                                   (temp_next_meter > 14) ? ((temp_next_meter - 15) / 5) :
-                                   ((12 - temp_meter) / 11) :
-                                1,
-            
-                        fill: (temp_meter > 15) ? "#17f7ffff" :
-                              (temp_meter > 11) ? "#de1010" :
-                              "#12e32e",
+                        left: current_ship_img.left + energy_meter_x_offset,
+                        top: current_ship_img.top + energy_meter_y_offset,
+                        scaleX: energy_next_meter / m5_max_energy,
+                        fill: "#12e32e",
                         visible: current_ship_img.visible
                      });
             
@@ -1022,24 +999,17 @@
             
                      // Animate shield meter:
                      this.obj.shield_meter_back.animate({
-                        left: current_xx_p + shield_meter_x_offset,
-                        top: current_yy_p + shield_meter_y_offset,
+                        left: current_xx_p + energy_meter_x_offset,
+                        top: current_yy_p + energy_meter_y_offset,
                      }, {
                         duration: m5_default_anim_duration,
                         onComplete: () => {this.obj.shield_meter_back.set({ visible: !'$destroyed'.asBool()})},
                         easing: fabric.util.ease.easeOutCubic
                      });
                      this.obj.shield_meter.animate({
-                        left: current_xx_p + shield_meter_x_offset,
-                        top: current_yy_p + shield_meter_y_offset,
-                        scaleX: //If in shield_up phase:
-                                (temp_meter > 14) ? ((temp_meter - 15) / 5) :
-            
-                                //If in cool-down phase:
-                                (temp_meter > 10) ? ((temp_meter - 11) / 3) :
-            
-                                //If in charge-up phase:
-                                ((11 - temp_meter) / 11)
+                        left: current_xx_p + energy_meter_x_offset,
+                        top: current_yy_p + energy_meter_y_offset,
+                        scaleX: energy_meter / m5_max_energy,
                      }, {
                         duration: m5_default_anim_duration,
                         onComplete: () => {this.obj.shield_meter.set({ visible: !'$destroyed'.asBool() })},
