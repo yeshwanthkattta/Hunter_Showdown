@@ -5,6 +5,42 @@
    / See the repo's README.md for more information.
    use(m5-1.0)
    
+   / +++++++++++ Game Parameters ++++++++++++
+   
+   define_hier(SHIP, 3, 0)   /// number of ships
+   
+   / Ship and bullet hit box width/height
+   var(ship_width, 8)
+   var(ship_height, 8)
+   var(bullet_width, 2)
+   var(bullet_height, 10)
+   
+   / Energy Supply
+   var(reset_energy, 40)   /// your initial energy
+   var(max_energy, 80)     /// your maximum energy
+   var(recoup_energy, 15)  /// the amount you recharge each clock cycle, capped by max_energy.
+   / Energy is adjusted by each of the following each cycle, after recouping and maxing, in this order.
+   / Any action that would take energy below zero cannot be taken.
+   / Acceleration costs energy equal to X acceleration + Y acceleration. If there is insufficient energy for all acceleration, no acceleration is applied.
+   var(fire_cost, 30)      /// the energy cost of firing
+   var(cloak_cost, 15)     /// the energy cost of cloaking (each active cycle)
+   var(shield_cost, 25)    /// the energy cost of using your shield (each active cycle)
+   
+   define_hier(BULLET, 3, 0)    /// max number of bullets
+   
+   / ++++++++++ End of Contest Parameters ++++++++++++
+   
+   
+   / Computed parameters.
+   var(half_bullet_width, m5_calc(m5_bullet_width / 2))
+   var(half_bullet_height, m5_calc(m5_bullet_height / 2))
+   var(half_ship_width, m5_calc(m5_ship_width / 2))
+   var(half_ship_height, m5_calc(m5_ship_height / 2))
+   
+   var(default_anim_duration, 250)
+   var(default_anim_easing, easeOutCubic)  /// or m5_default_anim_easing
+   
+   
    / Provide a library defining a team's control circuit, name, and ID.
    fn(team_raw_tlv, ?TlvFile, {
       / Include submitted TLV URL, reporting an error if it produces text output.
@@ -22,33 +58,8 @@
       on_return(var, team_name, m5_TeamName)
    })
    
-   
-   define_hier(SHIP, 3, 0)
-   define_hier(BULLET, 3, 0)
-   
-   var(bullet_width, 2)
-   var(half_bullet_width, 1)
-   var(bullet_height, 10)
-   var(half_bullet_height, 5)
-   
-   var(ship_width, 8)
-   var(half_ship_width, 4)
-   var(ship_height, 8)
-   var(half_ship_height, 4)
-   
-   var(default_anim_duration, 250)
-   
-   
    // Verilog sign extend.
    macro(sign_extend, ['{{$3{$1[$2]}}, $1}'])
-   
-   var(reset_energy, 40)
-   var(max_energy, 80)
-   var(recoup_energy, 15)
-   var(fire_cost, 30)
-   var(cloak_cost, 15)
-   var(shield_cost, 25)
-
 
 // --------------- For the Verilog template ---------------
 
@@ -256,10 +267,13 @@
             $ANY = /player$player_id ? /_secret/team1/ship$ANY : /_secret/team0/ship$ANY;
             `BOGUS_USE($dummy)  // Make sure this is pulled through the $ANY chain from /defaults to prevent empty $ANYs.
             
+            // Recoup energy, capped by max.
+            $recouped_energy[7:0] = $Energy + 8'd\m5_recoup_energy;
+            $maxed_energy[7:0] = ($recouped_energy > 8'd\m5_max_energy) ? 8'd\m5_max_energy : $recouped_energy;
             // Accelerate
             $no_more_bullets = & /bullet[*]$bullet_exists;
-            $do_accelerate = $Energy >= $xx_a + $yy_a && ! $destroyed;
-            $energy_after_a[7:0] = $Energy - ($do_accelerate ? m5_sign_extend($xx_a, 3, 4) + m5_sign_extend($yy_a, 3, 4) : 8'b0);
+            $do_accelerate = $maxed_energy >= $xx_a + $yy_a && ! $destroyed;
+            $energy_after_a[7:0] = $maxed_energy - ($do_accelerate ? m5_sign_extend($xx_a, 3, 4) + m5_sign_extend($yy_a, 3, 4) : 8'b0);
             // Fire
             $do_fire = $attempt_fire && $energy_after_a >= 8'd\m5_fire_cost && ! $no_more_bullets && ! $destroyed;
             $energy_after_fire[7:0] = $energy_after_a - ($do_fire ? 8'd\m5_fire_cost : 8'b0);
@@ -271,7 +285,7 @@
             $energy_after_shield[7:0] = $energy_after_cloak - ($do_shield ? 8'd\m5_shield_cost : 8'b0);
             
             $Energy[7:0] <= $reset ? 8'd40 :
-               $energy_after_shield + 8'd\m5_recoup_energy;
+               $energy_after_shield;
             
             // Is accessible, but not directly modifiable for participants (includes all the bullet logic) {
             $xx_v[5:0] = $reset ? 6'b0 + m5_sign_extend($xx_a, 3, 2) : >>1$xx_v + m5_sign_extend($xx_a, 3, 2);
@@ -447,7 +461,7 @@
                         }, {
                            duration: m5_default_anim_duration,
                            onComplete: () => {this.obj.bullet_img.set({ visible: anim_finish_visible})},
-                           easing: fabric.util.ease.easeOutCubic
+                           easing: fabric.util.ease.m5_default_anim_easing
                         });
                
                         // Animate bullet rect:
@@ -458,7 +472,7 @@
                         }, {
                            duration: m5_default_anim_duration,
                            onComplete: () => {this.obj.bullet_rect.set({ visible: anim_finish_visible})},
-                           easing: fabric.util.ease.easeOutCubic
+                           easing: fabric.util.ease.m5_default_anim_easing
                         });
                      }
                
@@ -498,7 +512,7 @@
                         }, {
                            duration: m5_default_anim_duration,
                            onComplete: () => {this.obj.bullet_img.set({ visible: anim_finish_visible})},
-                           easing: fabric.util.ease.easeOutCubic
+                           easing: fabric.util.ease.m5_default_anim_easing
                         });
                
                         // Animate bullet rect:
@@ -509,7 +523,7 @@
                         }, {
                            duration: m5_default_anim_duration,
                            onComplete: () => {this.obj.bullet_rect.set({ visible: anim_finish_visible})},
-                           easing: fabric.util.ease.easeOutCubic
+                           easing: fabric.util.ease.m5_default_anim_easing
                         });
                      }
                
@@ -723,12 +737,12 @@
                   const current_xx_p = asSigned('$xx_p'.asInt(), 8);
                   const current_yy_p = -asSigned('$yy_p'.asInt(), 8);
             
-                  const shield_meter_x_offset = player_id ? 5 : -5;
-                  const shield_meter_y_offset = player_id ? -9 : 9;
+                  const energy_meter_x_offset = player_id ? 5 : -5;
+                  const energy_meter_y_offset = player_id ? -9 : 9;
             
-                  const temp_last_meter = '>>1$Energy'.asInt();
-                  const temp_meter = '$Energy'.asInt();
-                  const temp_next_meter = '$Energy'.step().asInt();
+                  const energy_last_meter = '>>1$Energy'.asInt();
+                  const energy_meter = '$Energy'.asInt();
+                  const energy_next_meter = '$Energy'.step().asInt();
             
             
                   // If Moving Forward Cycles:
@@ -768,21 +782,21 @@
                         top: current_ship_img.top,
                         visible: current_ship_img.visible
                      });
-            
+                     
                      // Set shield meter:
                      this.obj.shield_meter_back.set({
-                        left: current_ship_img.left + shield_meter_x_offset,
-                        top: current_ship_img.top + shield_meter_y_offset,
+                        left: current_ship_img.left + energy_meter_x_offset,
+                        top: current_ship_img.top + energy_meter_y_offset,
                         visible: current_ship_img.visible
                      });
                      this.obj.shield_meter.set({
-                        left: current_ship_img.left + shield_meter_x_offset,
-                        top: current_ship_img.top + shield_meter_y_offset,
-                        scaleX: temp_meter / m5_max_energy,
+                        left: current_ship_img.left + energy_meter_x_offset,
+                        top: current_ship_img.top + energy_meter_y_offset,
+                        scaleX: energy_last_meter / m5_max_energy,
                         fill: "#12e32e",
                         visible: current_ship_img.visible
                      });
-            
+                     
                      // Set shield:
                      this.obj.shield_img.set({
                         left: current_ship_img.left,
@@ -800,7 +814,7 @@
                         angle: animate_angle,
                      }, {
                         duration: m5_default_anim_duration,
-                        easing: fabric.util.ease.easeOutCubic
+                        easing: fabric.util.ease.m5_default_anim_easing
                         }
                      );
             
@@ -832,35 +846,27 @@
                      }, {
                         duration: m5_default_anim_duration,
                         onComplete: () => {this.obj.ship_rect.set({ visible: !'$destroyed'.asBool()})},
-                        easing: fabric.util.ease.easeOutCubic
+                        easing: fabric.util.ease.m5_default_anim_easing
                      });
             
                      // Animate shield meter:
                      this.obj.shield_meter_back.animate({
-                        left: current_xx_p + shield_meter_x_offset,
-                        top: current_yy_p + shield_meter_y_offset,
+                        left: current_xx_p + energy_meter_x_offset,
+                        top: current_yy_p + energy_meter_y_offset,
                      }, {
                         duration: m5_default_anim_duration,
                         onComplete: () => {this.obj.shield_meter_back.set({ visible: !'$destroyed'.asBool()})},
-                        easing: fabric.util.ease.easeOutCubic
+                        easing: fabric.util.ease.m5_default_anim_easing
                      });
                      this.obj.shield_meter.animate({
-                        left: current_xx_p + shield_meter_x_offset,
-                        top: current_yy_p + shield_meter_y_offset,
-                        scaleX: // If in shield_up phase:
-                                (temp_meter > 14) ? ((temp_meter - 15) / 5) :
-            
-                                // If in cool-down phase:
-                                (temp_meter > 10) ? ((temp_meter - 11) / 3) :
-            
-                                // If in charge-up phase:
-                                ((11 - temp_meter) / 11)
+                        left: current_xx_p + energy_meter_x_offset,
+                        top: current_yy_p + energy_meter_y_offset,
+                        scaleX: energy_meter / m5_max_energy,
                      }, {
                         duration: m5_default_anim_duration,
                         onComplete: () => {this.obj.shield_meter.set({ visible: !'$destroyed'.asBool() })},
-                        easing: fabric.util.ease.easeOutCubic
+                        easing: fabric.util.ease.m5_default_anim_easing
                      });
-            
             
                      // Animate shield:
                      this.obj.shield_img.animate({
@@ -873,9 +879,8 @@
                         opacity: '$shot'.asBool() ? 0.0 : 1.0
                      }, {
                         duration: m5_default_anim_duration,
-                        onComplete: () => {this.obj.shield_img.set({ visible: !'$destroyed'.asBool() && this.obj.shield_img.visible })},
-                        easing: fabric.util.ease.easeOutCubic
-                     });
+                        easing: fabric.util.ease.m5_default_anim_easing
+                     }).thenSet({ visible: !'$destroyed'.asBool() && this.obj.shield_img.visible })
                   }
             
             
@@ -947,29 +952,15 @@
             
                      // Set shield meter:
                      this.obj.shield_meter_back.set({
-                        left: current_ship_img.left + shield_meter_x_offset,
-                        top: current_ship_img.top + shield_meter_y_offset,
+                        left: current_ship_img.left + energy_meter_x_offset,
+                        top: current_ship_img.top + energy_meter_y_offset,
                         visible: current_ship_img.visible
                      });
                      this.obj.shield_meter.set({
-                        left: current_ship_img.left + shield_meter_x_offset,
-                        top: current_ship_img.top + shield_meter_y_offset,
-                        scaleX: // If in shield_up phase:
-                                (temp_meter > 15) ? ((temp_meter - 16) / 5) :
-                                (temp_meter == 15) ? 0 :
-            
-                                // If in cool-down phase:
-                                (temp_meter > 11) ? ((temp_meter - 12) / 3) :
-            
-                                // If in charge-up phase:
-                                (temp_meter > 0) ?
-                                   (temp_next_meter > 14) ? ((temp_next_meter - 15) / 5) :
-                                   ((12 - temp_meter) / 11) :
-                                1,
-            
-                        fill: (temp_meter > 15) ? "#17f7ffff" :
-                              (temp_meter > 11) ? "#de1010" :
-                              "#12e32e",
+                        left: current_ship_img.left + energy_meter_x_offset,
+                        top: current_ship_img.top + energy_meter_y_offset,
+                        scaleX: energy_next_meter / m5_max_energy,
+                        fill: "#12e32e",
                         visible: current_ship_img.visible
                      });
             
@@ -996,7 +987,7 @@
                         angle: animate_angle,
                      }, {
                         duration: m5_default_anim_duration,
-                        easing: fabric.util.ease.easeOutCubic
+                        easing: fabric.util.ease.m5_default_anim_easing
                      });
             
                      // Animate ship rect:
@@ -1005,33 +996,26 @@
                         top: current_yy_p,
                      }, {
                         duration: m5_default_anim_duration,
-                        easing: fabric.util.ease.easeOutCubic
+                        easing: fabric.util.ease.m5_default_anim_easing
                      });
             
                      // Animate shield meter:
                      this.obj.shield_meter_back.animate({
-                        left: current_xx_p + shield_meter_x_offset,
-                        top: current_yy_p + shield_meter_y_offset,
+                        left: current_xx_p + energy_meter_x_offset,
+                        top: current_yy_p + energy_meter_y_offset,
                      }, {
                         duration: m5_default_anim_duration,
                         onComplete: () => {this.obj.shield_meter_back.set({ visible: !'$destroyed'.asBool()})},
-                        easing: fabric.util.ease.easeOutCubic
+                        easing: fabric.util.ease.m5_default_anim_easing
                      });
                      this.obj.shield_meter.animate({
-                        left: current_xx_p + shield_meter_x_offset,
-                        top: current_yy_p + shield_meter_y_offset,
-                        scaleX: //If in shield_up phase:
-                                (temp_meter > 14) ? ((temp_meter - 15) / 5) :
-            
-                                //If in cool-down phase:
-                                (temp_meter > 10) ? ((temp_meter - 11) / 3) :
-            
-                                //If in charge-up phase:
-                                ((11 - temp_meter) / 11)
+                        left: current_xx_p + energy_meter_x_offset,
+                        top: current_yy_p + energy_meter_y_offset,
+                        scaleX: energy_meter / m5_max_energy,
                      }, {
                         duration: m5_default_anim_duration,
                         onComplete: () => {this.obj.shield_meter.set({ visible: !'$destroyed'.asBool() })},
-                        easing: fabric.util.ease.easeOutCubic
+                        easing: fabric.util.ease.m5_default_anim_easing
                      });
             
                      // Animate shield:
@@ -1044,7 +1028,7 @@
                      }, {
                         duration: m5_default_anim_duration,
                         onComplete: () => {this.obj.shield_img.set({ visible: '$do_shield'.asBool() && !'$destroyed'.asBool()})},
-                        easing: fabric.util.ease.easeOutCubic
+                        easing: fabric.util.ease.m5_default_anim_easing
                      });
                   }
             
@@ -1135,7 +1119,7 @@
                         top: -64,
                      }, {
                         duration: 1000,
-                        easing: fabric.util.ease.easeOutCubic
+                        easing: fabric.util.ease.m5_default_anim_easing
                      });
                   }
                   else
@@ -1152,7 +1136,7 @@
                         top: -164,
                      }, {
                         duration: 1000,
-                        easing: fabric.util.ease.easeOutCubic
+                        easing: fabric.util.ease.m5_default_anim_easing
                      });
                   }
                   else
