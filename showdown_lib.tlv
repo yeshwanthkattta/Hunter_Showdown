@@ -103,12 +103,12 @@
                              (>>1$ability_counter + 4'b1);
       
       ///m4_rand($rand, 31, 0)
-      $xx_a[3:0] = >>1$reset ? 4'b11 :
-         ((>>1$xx_p + 8'b10000000) > (8'd32 + 8'b10000000)) ? 4'b1101 :
-         ((>>1$xx_p + 8'b10000000) < (- 8'd32 + 8'b10000000)) ? 4'b11 :
+      $xx_a[3:0] = $reset ? 4'b11 :
+         ((>>1$xx_p + 8'b10000000) > (8'd56 + 8'b10000000)) ? 4'b1101 :
+         ((>>1$xx_p + 8'b10000000) < (- 8'd56 + 8'b10000000)) ? 4'b11 :
          4'b0;
       
-      $yy_a[3:0] = >>1$reset ? 4'b11 :
+      $yy_a[3:0] = $reset ? 4'b11 :
          ((>>1$yy_p + 8'b10000000) > (- 8'd22 + 8'b10000000)) ? 4'b1101 :
          ((>>1$yy_p + 8'b10000000) < (- 8'd48 + 8'b10000000)) ? 4'b11 :
          4'b0;
@@ -274,16 +274,16 @@
                $energy_after_shield + 8'd\m5_recoup_energy;
             
             // Is accessible, but not directly modifiable for participants (includes all the bullet logic) {
-            $xx_v[5:0] = $reset ? 6'b0 : >>1$xx_v + m5_sign_extend($xx_a, 3, 2);
-            $yy_v[5:0] = $reset ? 6'b0 : >>1$yy_v + m5_sign_extend($yy_a, 3, 2);
+            $xx_v[5:0] = $reset ? 6'b0 + m5_sign_extend($xx_a, 3, 2) : >>1$xx_v + m5_sign_extend($xx_a, 3, 2);
+            $yy_v[5:0] = $reset ? 6'b0 + m5_sign_extend($yy_a, 3, 2) : >>1$yy_v + m5_sign_extend($yy_a, 3, 2);
             `BOGUS_USE($xx_a[3:0] $yy_a[3:0])   /// A bug workaround.
             
-            $xx_p[7:0] = $reset ? 8'd216 + #ship * 8'd40 :
+            $xx_p[7:0] = $reset ? 8'd216 + (#ship * 8'd40) + m5_sign_extend($xx_v, 5, 2) :
                          $destroyed ? >>1$xx_p :
                          >>1$xx_p + m5_sign_extend($xx_v, 5, 2);
             $yy_p[7:0] = $reset ?
-                            (#ship == 1) ? 8'd228 :
-                            8'd208 :
+                            (#ship == 1) ? 8'd228 + m5_sign_extend($yy_v, 5, 2) :
+                            8'd208 + m5_sign_extend($yy_v, 5, 2) :
                          $destroyed ? >>1$yy_p :
                          >>1$yy_p + m5_sign_extend($yy_v, 5, 2);
             
