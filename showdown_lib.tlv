@@ -97,23 +97,28 @@
 // Team logic providing testing behavior.
 \TLV team_test1(/_top)
    /ship[*]
+      $fire_counter[1:0] = >>1$reset ? 2'b0 :
+                           (>>1$fire_counter + 2'b1);
+      $ability_counter[3:0] = >>1$reset ? 4'b0 :
+                             (>>1$ability_counter + 4'b1);
+      
       ///m4_rand($rand, 31, 0)
-      $xx_a[3:0] = >>1$reset ? 4'd5 :
-         ((>>1$xx_p + 8'b10000000) > (8'd32 + 8'b10000000)) ? 4'b1111 :
-         ((>>1$xx_p + 8'b10000000) < (- 8'd32 + 8'b10000000)) ? 4'b1 :
+      $xx_a[3:0] = >>1$reset ? 4'b11 :
+         ((>>1$xx_p + 8'b10000000) > (8'd32 + 8'b10000000)) ? 4'b1101 :
+         ((>>1$xx_p + 8'b10000000) < (- 8'd32 + 8'b10000000)) ? 4'b11 :
          4'b0;
       
-      $yy_a[3:0] = /top>>1$reset ? 4'b1 :
-         ((>>1$yy_p + 8'b10000000) > (- 8'd12 + 8'b10000000)) ? 4'b1111 :
-         ((>>1$yy_p + 8'b10000000) < (- 8'd48 + 8'b10000000)) ? 4'b1 :
+      $yy_a[3:0] = >>1$reset ? 4'b11 :
+         ((>>1$yy_p + 8'b10000000) > (- 8'd22 + 8'b10000000)) ? 4'b1101 :
+         ((>>1$yy_p + 8'b10000000) < (- 8'd48 + 8'b10000000)) ? 4'b11 :
          4'b0;
       
-      $attempt_fire = 1'b1;
-      $fire_dir[1:0] = *cyc_cnt; //0 = right, 1 = down, 2 = left, 3 = up
+      $attempt_fire = ($fire_counter == 2'b11);
+      $fire_dir[1:0] = 2'b11; //0 = right, 1 = down, 2 = left, 3 = up
       
-      $attempt_shield = 1'b1;
+      $attempt_shield = ($ability_counter >= 4'b101) && ($ability_counter < 4'b1000);
       
-      $attempt_cloak = *cyc_cnt[3:2] == 2'b11;
+      $attempt_cloak = ($ability_counter >= 4'b1101);
 
 // Team logic that uses default values (and thus, the ships do absolutely nothing).
 \TLV team_sitting_duck(/_top)
@@ -273,10 +278,12 @@
             $yy_v[5:0] = $reset ? 6'b0 : >>1$yy_v + m5_sign_extend($yy_a, 3, 2);
             `BOGUS_USE($xx_a[3:0] $yy_a[3:0])   /// A bug workaround.
             
-            $xx_p[7:0] = $reset ? 8'd200 + #ship * 8'd40 :
+            $xx_p[7:0] = $reset ? 8'd216 + #ship * 8'd40 :
                          $destroyed ? >>1$xx_p :
                          >>1$xx_p + m5_sign_extend($xx_v, 5, 2);
-            $yy_p[7:0] = $reset ? 8'd208 :
+            $yy_p[7:0] = $reset ?
+                            (#ship == 1) ? 8'd228 :
+                            8'd208 :
                          $destroyed ? >>1$yy_p :
                          >>1$yy_p + m5_sign_extend($yy_v, 5, 2);
             
@@ -1280,7 +1287,7 @@
       
       
       // Assert these to end simulation (before Makerchip cycle limit).
-      $passed = | /player[*]>>3$lost;
+      $passed = (| /player[*]>>3$lost) && !>>1$reset;
       $failed = *cyc_cnt > 600;
 
 
