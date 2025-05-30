@@ -17,7 +17,7 @@ Your three ships can:
 
 Each ship has a recharging energy supply. Each action costs energy. You might take an offensive strategy, firing often; you might take a defensive strategy, leaning heavily on your shields and cloaking; or you might focus on maneuverability. Your strategy is what sets you apart from your competition.
 
-Your ships are able to monitor the last known positions of the other ships and whether they are cloaked (in which case their current positions are unknown). They cannot see enemy bullets or shields.
+Your ships are able to monitor the positions of the other ships (unless cloaked) and whether they are cloaked. They know which ships have been destroyed (on both teams). They cannot see enemy bullets or shields.
 
 ## Coding Your Control Circuits
 
