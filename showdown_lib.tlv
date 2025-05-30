@@ -801,10 +801,15 @@
                      this.obj.shield_img.set({
                         left: current_ship_img.left,
                         top: current_ship_img.top,
-                        scaleX: '>>1$do_shield'.asBool() ? 1.0 : 0.0,
-                        scaleY: '>>1$do_shield'.asBool() ? 1.0 : 0.0,
-                        visible: ('$do_shield'.asBool() || '>>1$do_shield'.asBool()) && !'$destroyed'.asBool(),
-                        opacity: 1.0
+                        scaleX: '>>1$do_shield'.asBool() ?
+                                   '$shot'.asBool() ? 1.2 :
+                                   1.0 :
+                                0.0,
+                        scaleY: '>>1$do_shield'.asBool() ?
+                                   '$shot'.asBool() ? 1.2 :
+                                   1.0 :
+                                0.0,
+                        visible: ('$do_shield'.asBool() || '>>1$do_shield'.asBool()) && !'$destroyed'.asBool()
                      });
             
                      // Animate ship image:
@@ -872,11 +877,8 @@
                      this.obj.shield_img.animate({
                         left: current_xx_p,
                         top: current_yy_p,
-                        scaleX: '$do_shield'.asBool() ? 1.0 :
-                                '$shot'.asBool() ? 2.0 : 0.0,
-                        scaleY: '$do_shield'.asBool() ? 1.0 :
-                                '$shot'.asBool() ? 2.0 : 0.0,
-                        opacity: '$shot'.asBool() ? 0.0 : 1.0
+                        scaleX: '$do_shield'.asBool() ? 1.0 : 0.0,
+                        scaleY: '$do_shield'.asBool() ? 1.0 : 0.0
                      }, {
                         duration: m5_default_anim_duration,
                         easing: fabric.util.ease.m5_default_anim_easing
@@ -968,14 +970,15 @@
                      this.obj.shield_img.set({
                         left: current_ship_img.left,
                         top: current_ship_img.top,
-                        scaleX: '$do_shield'.step().asBool() ? 1.0 :
-                                '$hit'.step().asBool() ? 2.0 :
+                        scaleX: '$do_shield'.step().asBool() ?
+                                   '$shot'.asBool() ? 1.2 :
+                                   1.0 :
                                 0.0,
-                        scaleY: '$do_shield'.step().asBool() ? 1.0 :
-                                '$hit'.step().asBool() ? 2.0 :
+                        scaleY: '$do_shield'.step().asBool() ?
+                                   '$shot'.asBool() ? 1.2 :
+                                   1.0 :
                                 0.0,
-                        visible: ('$do_shield'.asBool() || '$do_shield'.step().asBool()) && !'$destroyed'.step().asBool(),
-                        opacity: '$hit'.step().asBool() ? 0.0 : 1.0
+                        visible: ('$do_shield'.asBool() || '$do_shield'.step().asBool()) && !'$destroyed'.step().asBool()
                      });
             
             
