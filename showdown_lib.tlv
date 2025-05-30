@@ -37,6 +37,10 @@
    var(half_ship_width, m5_calc(m5_ship_width / 2))
    var(half_ship_height, m5_calc(m5_ship_height / 2))
    
+   var(default_anim_duration, 250)
+   var(default_anim_easing, easeOutCubic)  /// or m5_default_anim_easing
+   
+   
    / Provide a library defining a team's control circuit, name, and ID.
    fn(team_raw_tlv, ?TlvFile, {
       / Include submitted TLV URL, reporting an error if it produces text output.
@@ -53,8 +57,6 @@
       on_return(var, github_id, m5_TeamId)
       on_return(var, team_name, m5_TeamName)
    })
-   
-   var(default_anim_duration, 250)
    
    // Verilog sign extend.
    macro(sign_extend, ['{{$3{$1[$2]}}, $1}'])
@@ -459,7 +461,7 @@
                         }, {
                            duration: m5_default_anim_duration,
                            onComplete: () => {this.obj.bullet_img.set({ visible: anim_finish_visible})},
-                           easing: fabric.util.ease.easeOutCubic
+                           easing: fabric.util.ease.m5_default_anim_easing
                         });
                
                         // Animate bullet rect:
@@ -470,7 +472,7 @@
                         }, {
                            duration: m5_default_anim_duration,
                            onComplete: () => {this.obj.bullet_rect.set({ visible: anim_finish_visible})},
-                           easing: fabric.util.ease.easeOutCubic
+                           easing: fabric.util.ease.m5_default_anim_easing
                         });
                      }
                
@@ -510,7 +512,7 @@
                         }, {
                            duration: m5_default_anim_duration,
                            onComplete: () => {this.obj.bullet_img.set({ visible: anim_finish_visible})},
-                           easing: fabric.util.ease.easeOutCubic
+                           easing: fabric.util.ease.m5_default_anim_easing
                         });
                
                         // Animate bullet rect:
@@ -521,7 +523,7 @@
                         }, {
                            duration: m5_default_anim_duration,
                            onComplete: () => {this.obj.bullet_rect.set({ visible: anim_finish_visible})},
-                           easing: fabric.util.ease.easeOutCubic
+                           easing: fabric.util.ease.m5_default_anim_easing
                         });
                      }
                
@@ -812,7 +814,7 @@
                         angle: animate_angle,
                      }, {
                         duration: m5_default_anim_duration,
-                        easing: fabric.util.ease.easeOutCubic
+                        easing: fabric.util.ease.m5_default_anim_easing
                         }
                      );
             
@@ -844,7 +846,7 @@
                      }, {
                         duration: m5_default_anim_duration,
                         onComplete: () => {this.obj.ship_rect.set({ visible: !'$destroyed'.asBool()})},
-                        easing: fabric.util.ease.easeOutCubic
+                        easing: fabric.util.ease.m5_default_anim_easing
                      });
             
                      // Animate shield meter:
@@ -854,7 +856,7 @@
                      }, {
                         duration: m5_default_anim_duration,
                         onComplete: () => {this.obj.shield_meter_back.set({ visible: !'$destroyed'.asBool()})},
-                        easing: fabric.util.ease.easeOutCubic
+                        easing: fabric.util.ease.m5_default_anim_easing
                      });
                      this.obj.shield_meter.animate({
                         left: current_xx_p + energy_meter_x_offset,
@@ -863,7 +865,7 @@
                      }, {
                         duration: m5_default_anim_duration,
                         onComplete: () => {this.obj.shield_meter.set({ visible: !'$destroyed'.asBool() })},
-                        easing: fabric.util.ease.easeOutCubic
+                        easing: fabric.util.ease.m5_default_anim_easing
                      });
             
                      // Animate shield:
@@ -877,7 +879,7 @@
                         opacity: '$shot'.asBool() ? 0.0 : 1.0
                      }, {
                         duration: m5_default_anim_duration,
-                        easing: fabric.util.ease.easeOutCubic
+                        easing: fabric.util.ease.m5_default_anim_easing
                      }).thenSet({ visible: !'$destroyed'.asBool() && this.obj.shield_img.visible })
                   }
             
@@ -985,7 +987,7 @@
                         angle: animate_angle,
                      }, {
                         duration: m5_default_anim_duration,
-                        easing: fabric.util.ease.easeOutCubic
+                        easing: fabric.util.ease.m5_default_anim_easing
                      });
             
                      // Animate ship rect:
@@ -994,7 +996,7 @@
                         top: current_yy_p,
                      }, {
                         duration: m5_default_anim_duration,
-                        easing: fabric.util.ease.easeOutCubic
+                        easing: fabric.util.ease.m5_default_anim_easing
                      });
             
                      // Animate shield meter:
@@ -1004,7 +1006,7 @@
                      }, {
                         duration: m5_default_anim_duration,
                         onComplete: () => {this.obj.shield_meter_back.set({ visible: !'$destroyed'.asBool()})},
-                        easing: fabric.util.ease.easeOutCubic
+                        easing: fabric.util.ease.m5_default_anim_easing
                      });
                      this.obj.shield_meter.animate({
                         left: current_xx_p + energy_meter_x_offset,
@@ -1013,7 +1015,7 @@
                      }, {
                         duration: m5_default_anim_duration,
                         onComplete: () => {this.obj.shield_meter.set({ visible: !'$destroyed'.asBool() })},
-                        easing: fabric.util.ease.easeOutCubic
+                        easing: fabric.util.ease.m5_default_anim_easing
                      });
             
                      // Animate shield:
@@ -1026,7 +1028,7 @@
                      }, {
                         duration: m5_default_anim_duration,
                         onComplete: () => {this.obj.shield_img.set({ visible: '$do_shield'.asBool() && !'$destroyed'.asBool()})},
-                        easing: fabric.util.ease.easeOutCubic
+                        easing: fabric.util.ease.m5_default_anim_easing
                      });
                   }
             
@@ -1117,7 +1119,7 @@
                         top: -64,
                      }, {
                         duration: 1000,
-                        easing: fabric.util.ease.easeOutCubic
+                        easing: fabric.util.ease.m5_default_anim_easing
                      });
                   }
                   else
@@ -1134,7 +1136,7 @@
                         top: -164,
                      }, {
                         duration: 1000,
-                        easing: fabric.util.ease.easeOutCubic
+                        easing: fabric.util.ease.m5_default_anim_easing
                      });
                   }
                   else
