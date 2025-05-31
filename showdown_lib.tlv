@@ -9,11 +9,14 @@
    
    define_hier(SHIP, 3, 0)   /// number of ships
    
+   / The board (play area) is 128x128, centered at 0,0.
+   
    / Ship and bullet hit box width/height
    var(ship_width, 8)
    var(ship_height, 8)
    var(bullet_width, 2)
    var(bullet_height, 10)
+   / Bullets travel (ship_height + bullet_height) / 2 = 9 each cycle.
    
    / Energy Supply
    var(reset_energy, 40)   /// your initial energy
@@ -38,7 +41,7 @@
    var(half_ship_height, m5_calc(m5_ship_height / 2))
    
    var(default_anim_duration, 250)
-   var(default_anim_easing, easeOutCubic)  /// or m5_default_anim_easing
+   var(default_anim_easing, easeOutCubic)  /// e.g. easeOutCubic or linear
    
    
    / Provide a library defining a team's control circuit, name, and ID.
@@ -60,6 +63,11 @@
    
    // Verilog sign extend.
    macro(sign_extend, ['{{$3{$1[$2]}}, $1}'])
+   
+   // Get the current and previous (from which VIZ cycle) value of a signal.
+   fn(get_sig, Path, Sig, Type, {
+      ~($m5_Sig = 'm5_Path$m5_Sig'; const is_\m5_Sig = $m5_Sig.as\m5_Type[''](); const was_\m5_Sig = $m5_Sig.step(step).as\m5_Type['']();)
+   })
 
 // --------------- For the Verilog template ---------------
 
@@ -77,6 +85,7 @@
          .destroyed(/ship[*]$destroyed),
          .enemy_x_p(/enemy_ship[*]$xx_p),
          .enemy_y_p(/enemy_ship[*]$yy_p),
+         .enemy_cloaked(/enemy_ship[*]>>1$do_cloak),
          // Outputs:
          .x_a($$xx_a_vect[4*m5_SHIP_CNT-1:0]),
          .y_a($$yy_a_vect[4*m5_SHIP_CNT-1:0]),
@@ -427,108 +436,51 @@
                      }
                
                
-                     // If moving forward cycles:
-                     if (this.last_cycle < this.getCycle())
-                     {
-                        this.firing = '$successful_fire'.asBool();
-               
-                        // Set bullet image:
-                        this.obj.bullet_img.set({
-                           visible: this.firing || '$bullet_exists'.asBool(false) || ('>>1$bullet_exists'.asBool(false) && ! '$hit_an_enemy'.asBool()),
-                           opacity: this.firing ? 0 : 1,
-                           left: this.firing ? asSigned('/ship[ship_id]>>1$xx_p'.asInt(), 8) : asSigned('>>1$bullet_x'.asInt(), 8),
-                           top: this.firing ? -asSigned('/ship[ship_id]>>1$yy_p'.asInt(), 8) : -asSigned('>>1$bullet_y'.asInt(), 8),
-                           angle: ('$bullet_dir'.asInt() + 1) * 90,
-                        });
-                        // Set bullet rect:
-                        this.obj.bullet_rect.set({
-                           visible: this.obj.bullet_img.visible,
-                           opacity: this.obj.bullet_img.opacity,
-                           left: this.obj.bullet_img.left,
-                           top: this.obj.bullet_img.top,
-                           angle: this.obj.bullet_img.angle - 90
-                        });
-               
-               
-               
-                        let anim_finish_visible = '$bullet_exists'.asBool();
-               
-                        // Animate bullet image:
-                        this.obj.bullet_img.animate({
-                           opacity: 1,
-                           left: asSigned('$bullet_x'.asInt(), 8),
-                           top: -asSigned('$bullet_y'.asInt(), 8),
-                        }, {
-                           duration: m5_default_anim_duration,
-                           onComplete: () => {this.obj.bullet_img.set({ visible: anim_finish_visible})},
-                           easing: fabric.util.ease.m5_default_anim_easing
-                        });
-               
-                        // Animate bullet rect:
-                        this.obj.bullet_rect.animate({
-                           opacity: 1,
-                           left: asSigned('$bullet_x'.asInt(), 8),
-                           top: -asSigned('$bullet_y'.asInt(), 8),
-                        }, {
-                           duration: m5_default_anim_duration,
-                           onComplete: () => {this.obj.bullet_rect.set({ visible: anim_finish_visible})},
-                           easing: fabric.util.ease.m5_default_anim_easing
-                        });
-                     }
-               
-               
-                     //If moving backwards cycles:
-                     else
-                     {
-                        this.next_firing = '$successful_fire'.step().asBool();
-               
-                        // Set bullet image:
-                        this.obj.bullet_img.set({
-                           visible: ('$bullet_exists'.asBool() || '$bullet_exists'.step().asBool()) && ! '$hit_an_enemy'.step().asBool(),
-                           opacity: 1,
-                           left: asSigned('$bullet_x'.step().asInt(), 8),
-                           top: -asSigned('$bullet_y'.step().asInt(), 8),
-                           angle: this.next_firing ? ('$bullet_dir'.step().asInt() + 1) * 90 : ('$bullet_dir'.asInt() + 1) * 90
-                        });
-               
-                        // Set bullet rect:
-                        this.obj.bullet_rect.set({
-                           visible: this.obj.bullet_img.visible,
-                           opacity: this.obj.bullet_img.opacity,
-                           left: this.obj.bullet_img.left,
-                           top: this.obj.bullet_img.top,
-                           angle: this.obj.bullet_img.angle - 90
-                        });
-               
-               
-               
-                        let anim_finish_visible = '$bullet_exists'.asBool();
-               
-                        // Animate bullet image:
-                        this.obj.bullet_img.animate({
-                           opacity: this.next_firing ? 0 : 1,
-                           left: this.next_firing ? asSigned('/ship[ship_id]$xx_p'.asInt(), 8) : asSigned('$bullet_x'.asInt(), 8),
-                           top: this.next_firing ? -asSigned('/ship[ship_id]$yy_p'.asInt(), 8) : -asSigned('$bullet_y'.asInt(), 8),
-                        }, {
-                           duration: m5_default_anim_duration,
-                           onComplete: () => {this.obj.bullet_img.set({ visible: anim_finish_visible})},
-                           easing: fabric.util.ease.m5_default_anim_easing
-                        });
-               
-                        // Animate bullet rect:
-                        this.obj.bullet_rect.animate({
-                           opacity: this.next_firing ? 0 : 1,
-                           left: this.next_firing ? asSigned('/ship[ship_id]$xx_p'.asInt(), 8) : asSigned('$bullet_x'.asInt(), 8),
-                           top: this.next_firing ? -asSigned('/ship[ship_id]$yy_p'.asInt(), 8) : -asSigned('$bullet_y'.asInt(), 8),
-                        }, {
-                           duration: m5_default_anim_duration,
-                           onComplete: () => {this.obj.bullet_rect.set({ visible: anim_finish_visible})},
-                           easing: fabric.util.ease.m5_default_anim_easing
-                        });
-                     }
-               
-                     //Save this cycle number for next render call
-                     this.last_cycle = this.getCycle();
+                     const forward = this.steppedBy() >= 0;
+                     const step = forward ? -1 : 1;   // The offset (step) for the cycle from which to animate.
+                     m5_get_sig(, successful_fire, Bool)
+                     m5_get_sig(, bullet_exists, Bool)
+                     ///m5_get_sig(, hit_an_enemy, Bool)
+                     m5_get_sig(/ship[ship_id], xx_p, SignedInt)
+                     m5_get_sig(/ship[ship_id], yy_p, SignedInt)
+                     m5_get_sig(, bullet_x, SignedInt)
+                     m5_get_sig(, bullet_y, SignedInt)
+                     m5_get_sig(, bullet_dir, Int)
+                     
+                     const forwardFire = is_successful_fire && forward;
+                     const backwardFire = was_successful_fire && ! forward
+                     const left = backwardFire ? is_xx_p : is_bullet_x;
+                     const top =  -(backwardFire ? is_yy_p : is_bullet_y);
+                     // Animate bullet image:
+                     this.obj.bullet_img.set({
+                        visible: was_bullet_exists || is_bullet_exists,
+                        opacity: was_bullet_exists ? 1 : 0,
+                        left: forwardFire ? was_xx_p : was_bullet_x,
+                        top:  -(forwardFire ? was_yy_p : was_bullet_y),
+                        angle: ((forwardFire ? is_bullet_dir : was_bullet_dir) + 1) * 90,
+                     }).animate({
+                        opacity: is_bullet_exists ? 1 : 0,
+                        left,
+                        top,
+                     }, {
+                        duration: m5_default_anim_duration,
+                        easing: fabric.util.ease.m5_default_anim_easing
+                     }).thenSet({ visible: is_bullet_exists });
+                     // Animate bullet rect similarly:
+                     this.obj.bullet_rect.set({
+                        visible: this.obj.bullet_img.visible,
+                        opacity: this.obj.bullet_img.opacity,
+                        left: this.obj.bullet_img.left,
+                        top: this.obj.bullet_img.top,
+                        angle: this.obj.bullet_img.angle - 90
+                     }).animate({
+                        opacity: is_bullet_exists ? 1 : 0,
+                        left,
+                        top,
+                     }, {
+                        duration: m5_default_anim_duration,
+                        easing: fabric.util.ease.m5_default_anim_easing
+                     }).thenSet({ visible: is_bullet_exists });
                   }
             
             
@@ -733,10 +685,10 @@
                      this.obj.ship_sprite2_img.set({ visible: false });
                   }
             
-            
-                  const current_xx_p = asSigned('$xx_p'.asInt(), 8);
-                  const current_yy_p = -asSigned('$yy_p'.asInt(), 8);
-            
+                  const step = this.steppedBy() >= 0 ? -1 : 1;   // The offset (step) for the cycle from which to animate.
+                  m5_get_sig(, xx_p, SignedInt)
+                  m5_get_sig(, yy_p, SignedInt)
+                  
                   const energy_meter_x_offset = player_id ? 5 : -5;
                   const energy_meter_y_offset = player_id ? -9 : 9;
             
@@ -746,7 +698,7 @@
             
             
                   // If Moving Forward Cycles:
-                  if (this.last_cycle <= this.getCycle())
+                  if (this.steppedBy() >= 0)
                   {
                      // Determine the correct starting and ending angles for the ship for this cycle
                      let cycle_xx_a = '>>1$xx_a';
@@ -809,8 +761,8 @@
             
                      // Animate ship image:
                      let animateShip = current_ship_img.animate({
-                        left: current_xx_p,
-                        top: current_yy_p,
+                        left: is_xx_p,
+                        top: -is_yy_p,
                         angle: animate_angle,
                      }, {
                         duration: m5_default_anim_duration,
@@ -826,7 +778,7 @@
                            this.obj[`explody_sprite${i}`]
                               .set({visible: false})
                               .wait(i * 140)
-                              .thenSet({left: current_xx_p, top: current_yy_p, visible: true})
+                              .thenSet({left: is_xx_p, top: -is_yy_p, visible: true})
                               .thenWait(140).thenSet({visible: false});
                         }
                      }
@@ -841,8 +793,8 @@
             
                      // Animate ship rect:
                      this.obj.ship_rect.animate({
-                        left: current_xx_p,
-                        top: current_yy_p,
+                        left: is_xx_p,
+                        top: -is_yy_p,
                      }, {
                         duration: m5_default_anim_duration,
                         onComplete: () => {this.obj.ship_rect.set({ visible: !'$destroyed'.asBool()})},
@@ -851,16 +803,16 @@
             
                      // Animate shield meter:
                      this.obj.shield_meter_back.animate({
-                        left: current_xx_p + energy_meter_x_offset,
-                        top: current_yy_p + energy_meter_y_offset,
+                        left: is_xx_p + energy_meter_x_offset,
+                        top: -is_yy_p + energy_meter_y_offset,
                      }, {
                         duration: m5_default_anim_duration,
                         onComplete: () => {this.obj.shield_meter_back.set({ visible: !'$destroyed'.asBool()})},
                         easing: fabric.util.ease.m5_default_anim_easing
                      });
                      this.obj.shield_meter.animate({
-                        left: current_xx_p + energy_meter_x_offset,
-                        top: current_yy_p + energy_meter_y_offset,
+                        left: is_xx_p + energy_meter_x_offset,
+                        top: -is_yy_p + energy_meter_y_offset,
                         scaleX: energy_meter / m5_max_energy,
                      }, {
                         duration: m5_default_anim_duration,
@@ -870,8 +822,8 @@
             
                      // Animate shield:
                      this.obj.shield_img.animate({
-                        left: current_xx_p,
-                        top: current_yy_p,
+                        left: is_xx_p,
+                        top: -is_yy_p,
                         scaleX: '$do_shield'.asBool() ? 1.0 :
                                 '$shot'.asBool() ? 2.0 : 0.0,
                         scaleY: '$do_shield'.asBool() ? 1.0 :
@@ -916,7 +868,7 @@
                            this.obj[`explody_sprite${4 - i}`]
                               .set({visible: false})
                               .wait(i * 140)
-                              .thenSet({left: current_xx_p, top: current_yy_p, visible: true})
+                              .thenSet({left: is_xx_p, top: -is_yy_p, visible: true})
                               .thenWait(140).thenSet({visible: false});
                         }
             
@@ -982,8 +934,8 @@
             
                      // Animate ship image:
                      current_ship_img.animate({
-                        left: current_xx_p,
-                        top: current_yy_p,
+                        left: is_xx_p,
+                        top: -is_yy_p,
                         angle: animate_angle,
                      }, {
                         duration: m5_default_anim_duration,
@@ -992,8 +944,8 @@
             
                      // Animate ship rect:
                      this.obj.ship_rect.animate({
-                        left: current_xx_p,
-                        top: current_yy_p,
+                        left: is_xx_p,
+                        top: -is_yy_p,
                      }, {
                         duration: m5_default_anim_duration,
                         easing: fabric.util.ease.m5_default_anim_easing
@@ -1001,16 +953,16 @@
             
                      // Animate shield meter:
                      this.obj.shield_meter_back.animate({
-                        left: current_xx_p + energy_meter_x_offset,
-                        top: current_yy_p + energy_meter_y_offset,
+                        left: is_xx_p + energy_meter_x_offset,
+                        top: -is_yy_p + energy_meter_y_offset,
                      }, {
                         duration: m5_default_anim_duration,
                         onComplete: () => {this.obj.shield_meter_back.set({ visible: !'$destroyed'.asBool()})},
                         easing: fabric.util.ease.m5_default_anim_easing
                      });
                      this.obj.shield_meter.animate({
-                        left: current_xx_p + energy_meter_x_offset,
-                        top: current_yy_p + energy_meter_y_offset,
+                        left: is_xx_p + energy_meter_x_offset,
+                        top: -is_yy_p + energy_meter_y_offset,
                         scaleX: energy_meter / m5_max_energy,
                      }, {
                         duration: m5_default_anim_duration,
@@ -1020,8 +972,8 @@
             
                      // Animate shield:
                      this.obj.shield_img.animate({
-                        left: current_xx_p,
-                        top: current_yy_p,
+                        left: is_xx_p,
+                        top: -is_yy_p,
                         scaleX: '$do_shield'.asBool() ? 1.0 : 0.0,
                         scaleY: '$do_shield'.asBool() ? 1.0 : 0.0,
                         opacity: 1.0,
@@ -1031,10 +983,6 @@
                         easing: fabric.util.ease.m5_default_anim_easing
                      });
                   }
-            
-            
-              // Save this cycle number for next render call
-               this.last_cycle = this.getCycle();
                }
       
       
@@ -1111,93 +1059,39 @@
             // ######## Render ########
             render()
             {
-               let animateEndScreen = (end_screen, last_win_id) => {
-                  if (last_win_id == 0)
-                  {
-                     end_screen.set({visible: true, top: -164});
-                     end_screen.animate({
-                        top: -64,
+               // Nothing shown by default.
+               this.obj.p1win_img.set({visible: false});
+               this.obj.p2win_img.set({visible: false});
+               this.obj.tie_img.set({visible: false});
+              
+               const forward = this.steppedBy() >= 0;
+               const step = forward ? -1 : 1;   // The offset (step) for the cycle from which to animate.
+               m5_get_sig(/_secret>>1, win_id, Int)
+               const animate = is_win_id != was_win_id;
+               const win_id = forward ? is_win_id : was_win_id;
+               const endScreen =
+                      (win_id == 1) ? this.obj.p1win_img :
+                      (win_id == 2) ? this.obj.p2win_img :
+                                      this.obj.tie_img;
+               // Animate Y coords.
+               const up = -164;
+               const down = -64;
+               console.log(`steppedBy: ${this.steppedBy()}, is_win_id: ${is_win_id}, was_win_id: ${was_win_id}, win_id: ${win_id}`);
+               if (animate || win_id != 0) {
+                  endScreen.set({visible: true, top: (animate && forward) ? up : down});
+                  if (animate) {
+                     endScreen.animate({
+                        top: forward ? down : up,
                      }, {
                         duration: 1000,
-                        easing: fabric.util.ease.m5_default_anim_easing
+                        easing: fabric.util.ease.easeOutCubic
                      });
-                  }
-                  else
-                  {
-                     end_screen.set({visible: true, top: -64});
+                  } else if (win_id != 0) {
+                     endScreen.set({visible: true, top: -64});
                   }
                }
-         
-               let animateEndScreenReverse = (end_screen, last_win_id) => {
-                  if (last_win_id == 0)
-                  {
-                     end_screen.set({visible: true, top: -64});
-                     end_screen.animate({
-                        top: -164,
-                     }, {
-                        duration: 1000,
-                        easing: fabric.util.ease.m5_default_anim_easing
-                     });
-                  }
-                  else
-                  {
-                     end_screen.set({visible: true, top: -64});
-                  }
-               }
-         
-         
-               let $win_id = '/_secret$win_id';
-               let win_id_0 = $win_id.asInt();
-               let win_id_1 = $win_id.step(-1).asInt();
-               let win_id_2 = $win_id.step(-1).asInt();
-         
-               // If Moving Forward Cycles:
-               if (this.last_cycle < this.getCycle())
-               {
-                  // Animate endscreen if applicable:
-                  if (win_id_1 != 0)
-                  {
-                     animateEndScreen(
-                        (win_id_1 == 1) ? this.obj.p1win_img :
-                        (win_id_1 == 2) ? this.obj.p2win_img :
-                        this.obj.tie_img,
-                        win_id_2
-                     );
-                  }
-                  else
-                  {
-                     this.obj.p1win_img.set({visible: false});
-                     this.obj.p2win_img.set({visible: false});
-                     this.obj.tie_img.set({visible: false});
-                  }
-               }
-         
-         
-               // If Moving Backward Cycles:
-               else
-               {
-                  // Animate endscreen if applicable:
-                  if (win_id_0 != 0)
-                  {
-                     animateEndScreenReverse(
-                        (win_id_0 == 1) ? this.obj.p1win_img :
-                        (win_id_0 == 2) ? this.obj.p2win_img :
-                        this.obj.tie_img,
-                        win_id_1
-                     );
-                  }
-                  else
-                  {
-                     this.obj.p1win_img.set({visible: false});
-                     this.obj.p2win_img.set({visible: false});
-                     this.obj.tie_img.set({visible: false});
-                  }
-               }
-         
-               // Save last cycle number for next render call
-               this.last_cycle = this.getCycle();
             }
-      
+            
       // ==================== Placard =================
       m5_var(placard_p0_len, m5_length(m5_get_ago(team_name, 0)))
       m5_var(placard_p1_len, m5_length(m5_get_ago(team_name, 1)))

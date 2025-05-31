@@ -1,12 +1,12 @@
 # 1st Annual Makerchip ASIC Design Showdown, 2025
 
-This repository is all you need to compete in the 1st Annual Makerchip ASIC Design Showdown. For Showdown details, see https://www.redwoodeda.com/showdown-info.
+# Overview
 
-## The 2025 Challenge Theme -- Space Battle
+This repository is all you need to compete in the 1st Annual Makerchip ASIC Design Showdown. For Showdown details, see https://www.redwoodeda.com/showdown-info. Participants must monitor the #showdown channel in the [TL-Verilog User's Slack workspace](https://join.slack.com/t/tl-verilog-users/shared_invite/zt-4fatipnr-dmDgkbzrCe0ZRLOOVm89gA) for program updates.
 
-In each match, your fleet of three ships battles another. You design the control circuitry for your autonomous spacecraft to outmaneuver your opponents'.
+In each match, your fleet of three ships battles another. You design the control circuitry for your autonomous spacecraft to outmaneuver and outwit your opponents'.
 
-## Rules of Battle
+## Rules of Play
 
 Your three ships can:
 
@@ -18,6 +18,12 @@ Your three ships can:
 Each ship has a recharging energy supply. Each action costs energy. You might take an offensive strategy, firing often; you might take a defensive strategy, leaning heavily on your shields and cloaking; or you might focus on maneuverability. Your strategy is what sets you apart from your competition.
 
 Your ships are able to monitor the positions of the other ships (unless cloaked) and whether they are cloaked. They know which ships have been destroyed (on both teams). They cannot see enemy bullets or shields.
+
+Ships are destroyed when they are shot or when their hit box exits the play area.
+
+Control circuits have inputs characterizing the visible the state of the system, and they provide outputs that affect this state on the next cycle. Acceleration is applied as an instantaneous burst that immediately affects velocity, which affects the position on the next cycle. The VIZ tab on a given cycle reflects the state as update by the inputs on that cycle.
+
+Details of game parameters can be found at the top of `showdown_lib.tlv`.
 
 ## Coding Your Control Circuits
 
@@ -46,8 +52,6 @@ On the other hand, TL-Verilog offers:
 - *Community:* This contest is associated with the TL-Verilog community. In the #showdown Slack channel in the [TL-Verilog User's Slack workspace](https://join.slack.com/t/tl-verilog-users/shared_invite/zt-4fatipnr-dmDgkbzrCe0ZRLOOVm89gA) you'll find a supportive community around TL-Verilog.
 - *IDE Features:* This contest uses the Makerchip IDE, which is custom built to support TL-Verilog. Features like the DIAGRAM view and interactive features apply only to TL-Verilog.
 - *Compatibility:* If you are on the fence, start with the TL-Verilog template and try using TL-Verilog. It is an extension of Verilog. If you have trouble, you can always write a pure Verilog component (module, macro, function, etc.) and instantiate it from your TL-Verilog code.
-
-## Getting Started with TL-Verilog
 
 If you are coding (System)Verilog, you can find plenty of resources online. If you are learning TL-Verilog for the first time, you'll find
 resources to get you started under Makerchip's "Learn" menu.

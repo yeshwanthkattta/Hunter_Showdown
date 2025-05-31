@@ -8,11 +8,14 @@
    /
    / Each player or team modifies this template to provide their own custom spacecraft
    / control circuitry. This template is for teams using Verilog. A TL-Verilog-based
-   / template is provided separately.
+   / template is provided separately. Monitor the Showdown Slack channel for updates.
+   / Use the latest template for submission.
    /
+   / Showdown details: https://www.redwoodeda.com/showdown-info
+   
    /-------------------------------------------+-------------------------------------------\
    /                                                                                       |
-   /      Your job is to write logic to pilot your ships to destroy the enemy ships!       |
+   /                                                                                       |
    /                                                                                       |
    /                                                                                       |
    /   Your circuit should drive the following signals:                                    |
@@ -48,13 +51,17 @@
       input logic [m5_SHIP_RANGE][7:0] enemy_x_p, input logic [m5_SHIP_RANGE][7:0] enemy_y_p,   // Positions of enemy ships.
       input logic [m5_SHIP_RANGE] enemy_cloaked,   // Whether the enemy ships are cloaked, in which case their enemy_x_p and enemy_y_p will not update.
       // Outputs:
-      output logic [m5_SHIP_RANGE][3:0] x_a, output logic [m5_SHIP_RANGE][7:0] y_a,  // Attempted acceleration for each of your ships.
+      output logic [m5_SHIP_RANGE][3:0] x_a, output logic [m5_SHIP_RANGE][3:0] y_a,  // Attempted acceleration for each of your ships.
       output logic [m5_SHIP_RANGE] attempt_fire, output logic [m5_SHIP_RANGE] attempt_shield, [m5_SHIP_RANGE] attempt_cloak,  // Attempted actions for each of your ships.
       output logic [m5_SHIP_RANGE][1:0] fire_dir   // Direction to fire (if firing). ( 0 = right, 1 = down, 2 = left, 3 = up)
    );
    
-   // Your Verilog logic goes here.
-      
+   // Parameters defining the valid ranges of input/output values can be found near the top of "showdown_lib.tlv".
+   
+   // /------------------------------\
+   // | Your Verilog logic goes here |
+   // \------------------------------/
+   
    endmodule
 
 

@@ -8,7 +8,10 @@
    /
    / Each player or team modifies this template to provide their own custom spacecraft
    / control circuitry. This template is for teams using TL-Verilog. A Verilog-based
-   / template is provided separately.
+   / template is provided separately. Monitor the Showdown Slack channel for updates.
+   / Use the latest template for submission.
+   /
+   / Showdown details: https://www.redwoodeda.com/showdown-info
    /
    /-------------------------------------------+-------------------------------------------\
    /                                                                                       |
