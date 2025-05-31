@@ -123,12 +123,12 @@
                              (>>1$ability_counter + 4'b1);
       
       ///m4_rand($rand, 31, 0)
-      $xx_a[3:0] = >>1$reset ? 4'b11 :
-         ((>>1$xx_p + 8'b10000000) > (8'd32 + 8'b10000000)) ? 4'b1101 :
-         ((>>1$xx_p + 8'b10000000) < (- 8'd32 + 8'b10000000)) ? 4'b11 :
+      $xx_a[3:0] = $reset ? 4'b11 :
+         ((>>1$xx_p + 8'b10000000) > (8'd56 + 8'b10000000)) ? 4'b1101 :
+         ((>>1$xx_p + 8'b10000000) < (- 8'd56 + 8'b10000000)) ? 4'b11 :
          4'b0;
       
-      $yy_a[3:0] = >>1$reset ? 4'b11 :
+      $yy_a[3:0] = $reset ? 4'b11 :
          ((>>1$yy_p + 8'b10000000) > (- 8'd22 + 8'b10000000)) ? 4'b1101 :
          ((>>1$yy_p + 8'b10000000) < (- 8'd48 + 8'b10000000)) ? 4'b11 :
          4'b0;
@@ -297,16 +297,16 @@
                $energy_after_shield;
             
             // Is accessible, but not directly modifiable for participants (includes all the bullet logic) {
-            $xx_v[5:0] = $reset ? 6'b0 : >>1$xx_v + m5_sign_extend($xx_a, 3, 2);
-            $yy_v[5:0] = $reset ? 6'b0 : >>1$yy_v + m5_sign_extend($yy_a, 3, 2);
+            $xx_v[5:0] = $reset ? 6'b0 + m5_sign_extend($xx_a, 3, 2) : >>1$xx_v + m5_sign_extend($xx_a, 3, 2);
+            $yy_v[5:0] = $reset ? 6'b0 + m5_sign_extend($yy_a, 3, 2) : >>1$yy_v + m5_sign_extend($yy_a, 3, 2);
             `BOGUS_USE($xx_a[3:0] $yy_a[3:0])   /// A bug workaround.
             
-            $xx_p[7:0] = $reset ? 8'd216 + #ship * 8'd40 :
+            $xx_p[7:0] = $reset ? 8'd216 + (#ship * 8'd40) + m5_sign_extend($xx_v, 5, 2) :
                          $destroyed ? >>1$xx_p :
                          >>1$xx_p + m5_sign_extend($xx_v, 5, 2);
             $yy_p[7:0] = $reset ?
-                            (#ship == 1) ? 8'd228 :
-                            8'd208 :
+                            (#ship == 1) ? 8'd228 + m5_sign_extend($yy_v, 5, 2) :
+                            8'd208 + m5_sign_extend($yy_v, 5, 2) :
                          $destroyed ? >>1$yy_p :
                          >>1$yy_p + m5_sign_extend($yy_v, 5, 2);
             
@@ -753,10 +753,15 @@
                      this.obj.shield_img.set({
                         left: current_ship_img.left,
                         top: current_ship_img.top,
-                        scaleX: '>>1$do_shield'.asBool() ? 1.0 : 0.0,
-                        scaleY: '>>1$do_shield'.asBool() ? 1.0 : 0.0,
-                        visible: ('$do_shield'.asBool() || '>>1$do_shield'.asBool()) && !'$destroyed'.asBool(),
-                        opacity: 1.0
+                        scaleX: '>>1$do_shield'.asBool() ?
+                                   '$shot'.asBool() ? 1.2 :
+                                   1.0 :
+                                0.0,
+                        scaleY: '>>1$do_shield'.asBool() ?
+                                   '$shot'.asBool() ? 1.2 :
+                                   1.0 :
+                                0.0,
+                        visible: ('$do_shield'.asBool() || '>>1$do_shield'.asBool()) && !'$destroyed'.asBool()
                      });
             
                      // Animate ship image:
@@ -824,10 +829,8 @@
                      this.obj.shield_img.animate({
                         left: is_xx_p,
                         top: -is_yy_p,
-                        scaleX: '$do_shield'.asBool() ? 1.0 :
-                                '$shot'.asBool() ? 2.0 : 0.0,
-                        scaleY: '$do_shield'.asBool() ? 1.0 :
-                                '$shot'.asBool() ? 2.0 : 0.0,
+                        scaleX: '$do_shield'.asBool() ? 1.0 : 0.0,
+                        scaleY: '$do_shield'.asBool() ? 1.0 : 0.0,
                         opacity: '$shot'.asBool() ? 0.0 : 1.0
                      }, {
                         duration: m5_default_anim_duration,
@@ -920,14 +923,15 @@
                      this.obj.shield_img.set({
                         left: current_ship_img.left,
                         top: current_ship_img.top,
-                        scaleX: '$do_shield'.step().asBool() ? 1.0 :
-                                '$hit'.step().asBool() ? 2.0 :
+                        scaleX: '$do_shield'.step().asBool() ?
+                                   '$shot'.asBool() ? 1.2 :
+                                   1.0 :
                                 0.0,
-                        scaleY: '$do_shield'.step().asBool() ? 1.0 :
-                                '$hit'.step().asBool() ? 2.0 :
+                        scaleY: '$do_shield'.step().asBool() ?
+                                   '$shot'.asBool() ? 1.2 :
+                                   1.0 :
                                 0.0,
-                        visible: ('$do_shield'.asBool() || '$do_shield'.step().asBool()) && !'$destroyed'.step().asBool(),
-                        opacity: '$hit'.step().asBool() ? 0.0 : 1.0
+                        visible: ('$do_shield'.asBool() || '$do_shield'.step().asBool()) && !'$destroyed'.step().asBool()
                      });
             
             
