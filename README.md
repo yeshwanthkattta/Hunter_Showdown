@@ -6,7 +6,7 @@ This repository is all you need to compete in the 1st Annual Makerchip ASIC Desi
 
 In each match, your fleet of three ships battles another. You design the control circuitry for your autonomous spacecraft to outmaneuver and outwit your opponents'.
 
-## Rules of Play
+## Rules of Combat
 
 Your three ships can:
 
@@ -23,7 +23,10 @@ Ships are destroyed when they are shot or when their hit box exits the play area
 
 Control circuits have inputs characterizing the visible the state of the system, and they provide outputs that affect this state on the next cycle. Acceleration is applied as an instantaneous burst that immediately affects velocity, which affects the position on the next cycle. The VIZ tab on a given cycle reflects the state as update by the inputs on that cycle.
 
-Details of game parameters can be found at the top of `showdown_lib.tlv`.
+The coordinate system is turned 180 degrees between the opponents, so the starting
+ship coordinates are the same for both opponents.
+
+Game parameters like hit box and board sizes can be found at the top of `showdown_lib.tlv`.
 
 ## Coding Your Control Circuits
 
@@ -55,3 +58,31 @@ On the other hand, TL-Verilog offers:
 
 If you are coding (System)Verilog, you can find plenty of resources online. If you are learning TL-Verilog for the first time, you'll find
 resources to get you started under Makerchip's "Learn" menu.
+
+## Tips
+
+### TL-Verilog
+
+In the WAVEFORM viewer, using the template, your signals will appear under `TLV/secret/team0` or `/secret/team1`. Other signals will not be accessible to you. Though in the template, you can access them through `/secret`, for final competition, `/secret` will be renamed. Your design will not compile for competition if you attempt to access `/secret` signals.
+
+Spend the time to learn TL-Verilog first, if you are not already familiar. There are learning resources in the Makerchip IDE. For this competition, you can build reasonable circuits as combinational logic, so pipelines, sequential logic, "alignment", and states are likely unimportant. Hierarchy will be useful to learn. Other tutorial topics, validity, TLV macros, and transaction flow, though they may be used heavily by the Showdown library and template, are less important for your logic.
+
+If you don't know Verilog syntax, TL-Verilog uses Verilog `assign` expression syntax, so you learn this as well.
+
+### Verilog
+
+In the WAVEFORM viewer, you can find your signals under `SV.team_YOUR_GITHUB_ID` (which you must rename accordingly).
+
+The internet can help you learn Verilog.
+
+### Seeking Help
+
+Seek help in Slack. Help others. A bit of competition can add to the fun, but the spirit of the competition is collaboration and community building.
+
+## Competition Rules
+
+Details of the competition structure will be determined close to the competition date, depending upon participation. Makerchip is the judge and jury for battles. The winner of each battle is the player/team who destroys all enemy ships or has the most ships remaining at (roughly) Makerchip's cycle limit of ~600 cycles.
+
+Your submission must be based on the latest Verilog or TL-Verilog template. Bug fixes in the templates and Showdown library may be required during the coding period.
+
+Inconsiderate behavior will not be tolerated and may result in disqualification. In the event of logic bugs, disputes, ambiguity, disqualification, etc., Redwood EDA, LLC's decisions are final and may result in lose of prize money.
