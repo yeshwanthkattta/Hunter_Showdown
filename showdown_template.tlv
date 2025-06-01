@@ -7,34 +7,33 @@
    / \----------------------------------------------------------------------------/
    /
    / Each player or team modifies this template to provide their own custom spacecraft
-   / control circuitry. This template is for teams using TL-Verilog. A Verilog-based
+   / control circuitry. This template is for teams using Verilog. A TL-Verilog-based
    / template is provided separately. Monitor the Showdown Slack channel for updates.
    / Use the latest template for submission.
    /
-   / Showdown details: https://www.redwoodeda.com/showdown-info
+   / Just 3 steps:
+   /   - Replace all YOUR_GITHUB_ID and YOUR_TEAM_NAME.
+   /   - Code your logic in the module below.
+   /   - Submit by Sun. July 26, 11 PM IST/1:30 PM EDT.
    /
-   /-------------------------------------------+-------------------------------------------\
-   /                                                                                       |
-   /      Your job is to write logic to pilot your ships to destroy the enemy ships!       |
-   /                                                                                       |
-   /                                                                                       |
-   /   Your circuit should drive the following signals:                                    |
-   /   - $xx_a: ship's x-axis acceleration                                                 |
-   /   - $yy_a: ship's y_axis acceleration                                                 |
-   /   - $attempt_shield: activate ship's shield if not on cooldown (The shield cools      |
-   /   down for 4 cycles, charges up for 10, and stays active depending on how long it     |
-   /   was changed up for)                                                                 |
-   /   - $attempt_fire: fire one of the ship's bullets if one is available (each ship      |
-   /   can have 3 bullets on screen at once)                                               |
-   /   - $fire_dir: the direction in which the ship fires its bullet                       |
-   /                                                                                       |
-   /   Additional information:                                                             |
-   /   - Ship dimensions are 10x10                                                         |
-   /   - Bullet dimensions are 2x16                                                        |
-   /   - Bullets move 16 tiles per cycle                                                   |
-   /                                       Good luck!                                      |
-   /                                                                                       |
-   /-------------------------------------------+-------------------------------------------/
+   / Showdown details: https://www.redwoodeda.com/showdown-info and in the reposotory README.
+   /
+   /
+   / Your circuit should drive the following signals for each ship, in /ship[2:0]:
+   /   - $xx_acc[7:0]: ship's x-axis acceleration
+   /   - $yy_acc[7:0]: ship's y-axis acceleration
+   /   - $attempt_shield: activate ship's shield
+   /   - $attempt_fire: fire one of the ship's bullets
+   /   - $fire_dir: the direction in which the ship fires its bullet
+   / Based on the following inputs:
+   /   - $xx_acc[3:0]: Attempted acceleration for each of your ships (if sufficient energy)
+   /   - $yy_acc[3:0]:  "
+   /   - $attempt_fire: Attempt to fire (if sufficient energy remains)
+   /   - $fire_dir: Direction to fire (if firing). ( 0 = right, 1 = down, 2 = left, 3 = up)
+   /   - $attempt_cloak: Attempted actions for each of your ships (if sufficient energy remains)
+   /   - $attempt_shield: Attempt to use shields (if sufficient energy remains)
+   /
+   / See also the game parameters in the header of `showdown_lib.tlv`.
 
    use(m5-1.0)
 
@@ -44,7 +43,9 @@
 \TLV team_YOUR_GITHUB_ID(/_top)
    /ship[*]
 
-
+      //-----------------------\
+      //  Your Code Goes Here  |
+      //-----------------------/
 
 
 

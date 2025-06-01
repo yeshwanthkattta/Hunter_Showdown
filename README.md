@@ -72,6 +72,8 @@ If you don't know Verilog syntax, TL-Verilog uses Verilog `assign` expression sy
 
 To treat TL-Verilog signals (pipesignals) as signed, use `\$signed($my_sig)`.
 
+Ternary expressions are king in TL-Verilog. Make sure you understand how to use and format them cleanly. Use them to customize behavior based on `#ship` among other uses.
+
 ### Verilog
 
 In the WAVEFORM viewer, you can find your signals under `SV.team_YOUR_GITHUB_ID` (which you must rename accordingly).
