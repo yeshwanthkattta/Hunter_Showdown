@@ -23,10 +23,11 @@ Ships are destroyed when they are shot or when their hit box exits the play area
 
 Control circuits have inputs characterizing the visible the state of the system, and they provide outputs that affect this state on the next cycle. Acceleration is applied as an instantaneous burst that immediately affects velocity, which affects the position on the next cycle. The VIZ tab on a given cycle reflects the state as update by the inputs on that cycle.
 
-The coordinate system is turned 180 degrees between the opponents, so the starting
-ship coordinates are the same for both opponents.
+The coordinate system is flipped 180 degrees between the opponents, around (0, 0) in the center, so the starting ship coordinates are the same for both opponents. The X dimension increases to the right, and the Y dimension increases upward.
 
-Game parameters like hit box and board sizes can be found at the top of `showdown_lib.tlv`.
+Ships are numbered 0, 1, 2 and have energy bars colored yellow, green, and blue, respectively. Players/teams are red and green, corresponding to 0 and 1 in the code, and, in VIZ, 1 and 2.
+
+Other game parameters like hit box and board sizes can be found at the top of `showdown_lib.tlv`.
 
 ## Coding Your Control Circuits
 
@@ -69,11 +70,25 @@ Spend the time to learn TL-Verilog first, if you are not already familiar. There
 
 If you don't know Verilog syntax, TL-Verilog uses Verilog `assign` expression syntax, so you learn this as well.
 
+To treat TL-Verilog signals (pipesignals) as signed, use `\$signed($my_sig)`.
+
+Ternary expressions are king in TL-Verilog. Make sure you understand how to use and format them cleanly. Use them to customize behavior based on `#ship` among other uses.
+
 ### Verilog
 
 In the WAVEFORM viewer, you can find your signals under `SV.team_YOUR_GITHUB_ID` (which you must rename accordingly).
 
 The internet can help you learn Verilog.
+
+To take advantage of LLM coding, connect Makerchip to an external file ("Project"::"Connect File" menu).
+
+### Debugging
+
+Assert `*passed` and/or `*failed` using, e.g., ` || *cyc_cnt > 50`, to limit simulation for testing.
+
+### VIZ
+
+Contestants are encouraged to use VIZ for debugging. Documentation is available in the Makerchip IDE. Custom VIZ features, however should be disabled in your final submission. Obstructive VIZ may result in disqualification.
 
 ### Seeking Help
 
@@ -85,4 +100,4 @@ Details of the competition structure will be determined close to the competition
 
 Your submission must be based on the latest Verilog or TL-Verilog template. Bug fixes in the templates and Showdown library may be required during the coding period.
 
-Inconsiderate behavior will not be tolerated and may result in disqualification. In the event of logic bugs, disputes, ambiguity, disqualification, etc., Redwood EDA, LLC's decisions are final and may result in lose of prize money.
+Inconsiderate behavior will not be tolerated and may result in disqualification. In the event of disputes, ambiguity, library/template bugs affecting outcomes, disqualification, etc., Redwood EDA, LLC's decisions are final and may result in lose of prize money. Details can be found in the [Showdown Terms and Conditions](https://www.redwoodeda.com/showdown-terms).

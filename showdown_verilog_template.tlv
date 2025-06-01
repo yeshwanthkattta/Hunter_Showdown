@@ -11,30 +11,12 @@
    / template is provided separately. Monitor the Showdown Slack channel for updates.
    / Use the latest template for submission.
    /
-   / Showdown details: https://www.redwoodeda.com/showdown-info
-   
-   /-------------------------------------------+-------------------------------------------\
-   /                                                                                       |
-   /                                                                                       |
-   /                                                                                       |
-   /                                                                                       |
-   /   Your circuit should drive the following signals:                                    |
-   /   - $xx_a: ship's x-axis acceleration                                                 |
-   /   - $yy_a: ship's y_axis acceleration                                                 |
-   /   - $attempt_shield: activate ship's shield if not on cooldown (The shield cools      |
-   /   down for 4 cycles, charges up for 10, and stays active depending on how long it     |
-   /   was changed up for)                                                                 |
-   /   - $attempt_fire: fire one of the ship's bullets if one is available (each ship      |
-   /   can have 3 bullets on screen at once)                                               |
-   /   - $fire_dir: the direction in which the ship fires its bullet                       |
-   /                                                                                       |
-   /   Additional information:                                                             |
-   /   - Ship dimensions are 10x10                                                         |
-   /   - Bullet dimensions are 2x16                                                        |
-   /   - Bullets move 16 tiles per cycle                                                   |
-   /                                       Good luck!                                      |
-   /                                                                                       |
-   /-------------------------------------------+-------------------------------------------/
+   / Just 3 steps:
+   /   - Replace all YOUR_GITHUB_ID and YOUR_TEAM_NAME.
+   /   - Code your logic in the module below.
+   /   - Submit by Sun. July 26, 11 PM IST/1:30 PM EDT.
+   /
+   / Showdown details: https://www.redwoodeda.com/showdown-info and in the reposotory README.
 
    use(m5-1.0)
 
@@ -45,13 +27,13 @@
    module team_YOUR_GITHUB_ID (
       // Inputs:
       input logic clk, input logic reset,
-      input logic [m5_SHIP_RANGE][5:0] x_v, input logic [m5_SHIP_RANGE][7:0] y_v,   // Velocity of your ships.
+      input signed logic [m5_SHIP_RANGE][5:0] x_v, input signed logic [m5_SHIP_RANGE][7:0] y_v,   // Velocity of your ships.
       input logic [m5_SHIP_RANGE][7:0] energy,   // The energy supply of each ship.
       input logic [m5_SHIP_RANGE] destroyed,   // Asserted if and when the ships are destroyed.
-      input logic [m5_SHIP_RANGE][7:0] enemy_x_p, input logic [m5_SHIP_RANGE][7:0] enemy_y_p,   // Positions of enemy ships.
-      input logic [m5_SHIP_RANGE] enemy_cloaked,   // Whether the enemy ships are cloaked, in which case their enemy_x_p and enemy_y_p will not update.
+      input signed logic [m5_SHIP_RANGE][7:0] prev_enemy_x_p, input signed logic [m5_SHIP_RANGE][7:0] prev_enemy_y_p,   // Positions of enemy ships as updated by their control logic last cycle.
+      input logic [m5_SHIP_RANGE] prev_enemy_cloaked,   // Whether the enemy ships are cloaked, in which case their prev_enemy_x_p and prev_enemy_y_p will not update.
       // Outputs:
-      output logic [m5_SHIP_RANGE][3:0] x_a, output logic [m5_SHIP_RANGE][3:0] y_a,  // Attempted acceleration for each of your ships.
+      output signed logic [m5_SHIP_RANGE][3:0] x_a, output signed logic [m5_SHIP_RANGE][3:0] y_a,  // Attempted acceleration for each of your ships.
       output logic [m5_SHIP_RANGE] attempt_fire, output logic [m5_SHIP_RANGE] attempt_shield, [m5_SHIP_RANGE] attempt_cloak,  // Attempted actions for each of your ships.
       output logic [m5_SHIP_RANGE][1:0] fire_dir   // Direction to fire (if firing). ( 0 = right, 1 = down, 2 = left, 3 = up)
    );
