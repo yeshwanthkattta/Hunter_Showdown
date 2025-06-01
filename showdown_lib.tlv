@@ -48,8 +48,8 @@
    var(half_ship_width, m5_calc(m5_ship_width / 2))
    var(half_ship_height, m5_calc(m5_ship_height / 2))
    
-   var(default_anim_duration, 250)
-   var(default_anim_easing, easeOutCubic)  /// e.g. easeOutCubic or linear
+   var(default_anim_duration, 750)
+   var(default_anim_easing, easeInOutCubic)  /// e.g. easeOutCubic or linear
    
    
    / Provide a library defining a team's control circuit, name, and ID.
@@ -1154,7 +1154,7 @@
                      // Enlarge shield during animation.
                      scaleX: was_do_shield ? 1.0 : 0.0,
                      scaleY: was_do_shield ? 1.0 : 0.0,
-                     visible: val_do_shield && ! val_destroyed
+                     visible: (was_do_shield || is_do_shield) && ! val_destroyed
                   }).animate({
                      left: is_xx_p,
                      top: -is_yy_p,
