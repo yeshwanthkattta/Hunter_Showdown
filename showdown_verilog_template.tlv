@@ -45,13 +45,13 @@
    module team_YOUR_GITHUB_ID (
       // Inputs:
       input logic clk, input logic reset,
-      input logic [m5_SHIP_RANGE][5:0] x_v, input logic [m5_SHIP_RANGE][7:0] y_v,   // Velocity of your ships.
+      input signed logic [m5_SHIP_RANGE][5:0] x_v, input signed logic [m5_SHIP_RANGE][7:0] y_v,   // Velocity of your ships.
       input logic [m5_SHIP_RANGE][7:0] energy,   // The energy supply of each ship.
       input logic [m5_SHIP_RANGE] destroyed,   // Asserted if and when the ships are destroyed.
-      input logic [m5_SHIP_RANGE][7:0] enemy_x_p, input logic [m5_SHIP_RANGE][7:0] enemy_y_p,   // Positions of enemy ships.
+      input signed logic [m5_SHIP_RANGE][7:0] enemy_x_p, input signed logic [m5_SHIP_RANGE][7:0] enemy_y_p,   // Positions of enemy ships.
       input logic [m5_SHIP_RANGE] enemy_cloaked,   // Whether the enemy ships are cloaked, in which case their enemy_x_p and enemy_y_p will not update.
       // Outputs:
-      output logic [m5_SHIP_RANGE][3:0] x_a, output logic [m5_SHIP_RANGE][3:0] y_a,  // Attempted acceleration for each of your ships.
+      output signed logic [m5_SHIP_RANGE][3:0] x_a, output signed logic [m5_SHIP_RANGE][3:0] y_a,  // Attempted acceleration for each of your ships.
       output logic [m5_SHIP_RANGE] attempt_fire, output logic [m5_SHIP_RANGE] attempt_shield, [m5_SHIP_RANGE] attempt_cloak,  // Attempted actions for each of your ships.
       output logic [m5_SHIP_RANGE][1:0] fire_dir   // Direction to fire (if firing). ( 0 = right, 1 = down, 2 = left, 3 = up)
    );

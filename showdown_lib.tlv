@@ -29,7 +29,11 @@
    var(cloak_cost, 15)     /// the energy cost of cloaking (each active cycle)
    var(shield_cost, 25)    /// the energy cost of using your shield (each active cycle)
    
-   define_hier(BULLET, 3, 0)    /// max number of bullets
+   / Max acceleration and velocity
+   var(max_acceleration, 4)
+   var(max_velocity, 8)
+   
+   define_hier(BULLET, 5, 0)    /// max number of bullets
    
    // Initial ship positions
    var(reset_x, ((#ship == 2) ? -8'd8 : -8'd40))
@@ -67,6 +71,12 @@
    
    / Verilog sign extend.
    macro(sign_extend, ['{{$3{$1[$2]}}, $1}'])
+   
+   / Cap a signed signal at a max value.
+   fn(cap, Sig, MaxBit, Max, {
+      var(UnsignedVal, m5_Sig[m5_calc(m5_MaxBit-1):0])
+      ~(m5_Sig[m5_MaxBit] ? ((-m5_UnsignedVal > m5_Max) ? -m5_Max : m5_Sig) : (( m5_UnsignedVal > m5_Max) ?  m5_Max : m5_Sig))
+   })
    
    
    / Animation methodology:
@@ -128,16 +138,16 @@
          .enemy_y_p(/enemy_ship[*]>>1$yy_p),
          .enemy_cloaked(/enemy_ship[*]>>1$do_cloak),
          // Outputs:
-         .x_a($$xx_a_vect[4*m5_SHIP_CNT-1:0]),
-         .y_a($$yy_a_vect[4*m5_SHIP_CNT-1:0]),
+         .x_a($$xx_acc_vect[4*m5_SHIP_CNT-1:0]),
+         .y_a($$yy_acc_vect[4*m5_SHIP_CNT-1:0]),
          .attempt_fire(/ship[*]$$attempt_fire),
          .attempt_shield(/ship[*]$$attempt_shield),
          .attempt_cloak(/ship[*]$$attempt_cloak),
          .fire_dir($$fire_dir_vect[2*m5_SHIP_CNT-1:0])
       );
    /ship[*]
-      $xx_a[3:0] = /_top$xx_a_vect[4 * (#ship + 1) - 1 : 4 * #ship];
-      $yy_a[3:0] = /_top$yy_a_vect[4 * (#ship + 1) - 1 : 4 * #ship];
+      $xx_acc[3:0] = /_top$xx_acc_vect[4 * (#ship + 1) - 1 : 4 * #ship];
+      $yy_acc[3:0] = /_top$yy_acc_vect[4 * (#ship + 1) - 1 : 4 * #ship];
       $fire_dir[1:0] = /_top$fire_dir_vect[2 * (#ship + 1) - 1 : 2 * #ship];
 
 
@@ -148,8 +158,8 @@
 \TLV team_random(/_top)
    /ship[*]
       m4_rand($rand, 31, 0, ship)
-      $xx_a[3:0] = $rand[3:0];
-      $yy_a[3:0] = $rand[7:4];
+      $xx_acc[3:0] = {$rand[3], 1'b0, $rand[1:0]};
+      $yy_acc[3:0] = {$rand[7], 1'b0, $rand[5:4]};
       $attempt_fire = $rand[8];
       $fire_dir[1:0] = $rand[10:9];
       $attempt_shield = $rand[11];
@@ -164,12 +174,12 @@
                              (>>1$ability_counter + 4'b1);
       
       ///m4_rand($rand, 31, 0)
-      $xx_a[3:0] = $reset ? 4'b11 :
+      $xx_acc[3:0] = $reset ? 4'b11 :
          ((>>1$xx_p + 8'b10000000) > (8'd56 + 8'b10000000)) ? 4'b1101 :
          ((>>1$xx_p + 8'b10000000) < (- 8'd56 + 8'b10000000)) ? 4'b11 :
          4'b0;
       
-      $yy_a[3:0] = $reset ? 4'b11 :
+      $yy_acc[3:0] = $reset ? 4'b11 :
          ((>>1$yy_p + 8'b10000000) > (- 8'd22 + 8'b10000000)) ? 4'b1101 :
          ((>>1$yy_p + 8'b10000000) < (- 8'd48 + 8'b10000000)) ? 4'b11 :
          4'b0;
@@ -247,14 +257,14 @@
       // These provide defaults for the team control logic.
       /default_controls
          $attempt_fire = 1'b0;
-         $xx_a[3:0] = 4'b0;
-         $yy_a[3:0] = 4'b0;
+         $xx_acc[3:0] = 4'b0;
+         $yy_acc[3:0] = 4'b0;
          $fire_dir[1:0] = 2'b0;
          $attempt_shield = 1'b0;
          $attempt_cloak = 1'b0;
          $dummy = 1'b0;  // A dummy signal to ensure something is pulled through the $ANY.
-         // These do not have to be (in fact, should not) be used.
-         `BOGUS_USE($attempt_fire $xx_a $yy_a $fire_dir $attempt_shield $attempt_cloak)
+         // These do not have to be (in fact, should not be) used.
+         `BOGUS_USE($attempt_fire $xx_acc $yy_acc $fire_dir $attempt_shield $attempt_cloak)
 
       $reset = /_top$reset;
       m5+player_logic(/_secret, /team0, 0)
@@ -318,6 +328,10 @@
             // Inputs from team logic.
             $ANY = /player$player_id ? /_secret/team1/ship$ANY : /_secret/team0/ship$ANY;
             `BOGUS_USE($dummy)  // Make sure this is pulled through the $ANY chain from /defaults to prevent empty $ANYs.
+            // Cap acceleration.
+            $xx_a[3:0] = m5_cap($xx_acc, 3, m5_max_acceleration);
+            $yy_a[3:0] = m5_cap($yy_acc, 3, m5_max_acceleration);
+            
             
             // Recoup energy, capped by max.
             $recouped_energy[7:0] = >>1$energy + 8'd\m5_recoup_energy;
@@ -340,8 +354,10 @@
                $energy_after_shield;
             
             // Is accessible, but not directly modifiable for participants (includes all the bullet logic) {
-            $xx_v[5:0] = $reset ? 6'b0 + m5_sign_extend($xx_a, 3, 2) : >>1$xx_v + m5_sign_extend($xx_a, 3, 2);
-            $yy_v[5:0] = $reset ? 6'b0 + m5_sign_extend($yy_a, 3, 2) : >>1$yy_v + m5_sign_extend($yy_a, 3, 2);
+            $xx_vel[5:0] = $reset ? 6'b0 + m5_sign_extend($xx_a, 3, 2) : >>1$xx_v + m5_sign_extend($xx_a, 3, 2);
+            $yy_vel[5:0] = $reset ? 6'b0 + m5_sign_extend($yy_a, 3, 2) : >>1$yy_v + m5_sign_extend($yy_a, 3, 2);
+            $xx_v[5:0] = m5_cap($xx_vel, 5, m5_max_velocity);
+            $yy_v[5:0] = m5_cap($yy_vel, 5, m5_max_velocity);
             `BOGUS_USE($xx_a[3:0] $yy_a[3:0])   /// A bug workaround.
             
             $xx_p[7:0] = $reset ? m5_reset_x :
@@ -376,7 +392,7 @@
             
             
             // ||||||||||||||||  BULLET LOGIC ||||||||||||||||
-            /bullet[2:0]
+            /m5_BULLET_HIER
                $prev_found_fire = (#bullet == 0) ? 1'b0 : /bullet[#bullet - 1]$found_fire;  // An lower-indexed bullet fired.
                $successful_fire = /ship$do_fire && ! >>1$bullet_exists && ! $prev_found_fire;
                $found_fire = $prev_found_fire || $successful_fire;
@@ -531,6 +547,7 @@
                init() {
                   let ret = {};
                   const player_id = (this.getIndex("player") == 1);
+                  const ship_id = this.getIndex();
             
                   // Create Ship Rect:
                   ret.ship_rect = new fabric.Rect({ width: 8, height: 8, strokeWidth: 0, fill: (player_id ? "#00ffb350" : "#ffff0050"), originX: "center", originY: "center" });
@@ -563,8 +580,11 @@
             
             
                   // Create Shield Meter:
-                  ret.shield_meter_back = new fabric.Rect({ width: 10, height: 1.5, strokeWidth: 0, fill: "#b0b0b0ff", originX: "left", originY: "center", angle: player_id ? 180.0 : 0.0 });
-                  ret.shield_meter = new fabric.Rect({ width: 10, height: 1.5, strokeWidth: 0, fill: "#17f7ffff", originX: "left", originY: "center", angle: player_id ? 180.0 : 0.0 });
+                  const energyColor = ship_id == 0 ? "#e8e800" :
+                                      ship_id == 1 ? "#30e810" :
+                                                     "#00d0d0";
+                  ret.energy_meter_back = new fabric.Rect({ width: 10, height: 1.5, strokeWidth: 0, fill: "#b0b0b0ff", originX: "left", originY: "center", angle: player_id ? 180.0 : 0.0 });
+                  ret.energy_meter = new fabric.Rect({ width: 10, height: 1.5, strokeWidth: 0, fill: energyColor, originX: "left", originY: "center", angle: player_id ? 180.0 : 0.0 });
             
             
             
@@ -622,7 +642,7 @@
                   // Determine the correct starting and ending angles for the ship for this cycle
                   const $cycle_xx_a = '$xx_a'.step(animCyc);
                   const $cycle_yy_a = '$yy_a'.step(animCyc);
-                  while (($cycle_xx_a.asSignedInt(0) == 0) && ($cycle_yy_a.asSignedInt(0) == 0))
+                  while (($cycle_xx_a.asSignedInt() == 0) && ($cycle_yy_a.asSignedInt() == 0))
                   {
                      $cycle_xx_a.stepTransition(-1);
                      $cycle_yy_a.stepTransition(-1);
@@ -659,6 +679,10 @@
                   // We set and hold a ship image matching the cycle's acceleration, then set to reflect the previous cycle.
                   // We animate ship angle to the next-cycle acceleration. 
                   const currentShipImage = accelToImage(val_xx_a, val_yy_a);
+                  const nextShipImage    = accelToImage(is_xx_a, is_yy_a);
+                  if (typeof nextShipImage == "undefined") {
+                     debugger;
+                  }
             
                   // Animate ship image
                   currentShipImage.set({
@@ -675,15 +699,18 @@
                   }, {
                      duration: m5_default_anim_duration,
                      easing: fabric.util.ease.m5_default_anim_easing
-                  })/**.then(() => {
+                  }).then(() => {
                      // Switch to ship reflecting current acceleration.
                      currentShipImage.set({visible: false});
-                     nextShipImg.set({
-                        visible: !is_destroyed,
-                        opacity: toOpacity(is_do_cloak)
+                     debugger;
+                     nextShipImage.set({
+                        left: is_xx_p,
+                        top: -is_yy_p,
+                        angle: animate_angle,
+                        visible: ! is_destroyed,
+                        opacity: toOpacity(is_do_cloak),
                      });
-                  })**/
-                  ;
+                  });
                   
                   // Animate ship hit box similarly, but no angle
                   this.obj.ship_rect.set({
@@ -698,14 +725,13 @@
                   }, {
                      duration: m5_default_anim_duration,
                      easing: fabric.util.ease.m5_default_anim_easing
-                  })/**.thenSet({
+                  }).thenSet({
                       visible: !is_destroyed,
-                        opacity: toOpacityHiBox(is_do_cloak)
-                  })**/
-                  ;
+                      opacity: toOpacityHitBox(is_do_cloak),
+                  });
 
-                  // Animate shield meter
-                  this.obj.shield_meter_back.set({
+                  // Animate energy meter
+                  this.obj.energy_meter_back.set({
                      left: currentShipImage.left + energy_meter_x_offset,
                      top: currentShipImage.top + energy_meter_y_offset,
                      visible: currentShipImage.visible
@@ -718,11 +744,10 @@
                   }).thenSet({
                      visible: !is_destroyed
                   });
-                  this.obj.shield_meter.set({
+                  this.obj.energy_meter.set({
                      left: currentShipImage.left + energy_meter_x_offset,
                      top: currentShipImage.top + energy_meter_y_offset,
                      scaleX: was_energy / m5_max_energy,
-                     fill: "#12e32e",
                      visible: currentShipImage.visible
                   }).animate({
                      left: is_xx_p + energy_meter_x_offset,
@@ -870,15 +895,17 @@
       
       
       // ==================== Placard =================
-      m5_var(placard_p0_len, m5_length(m5_get_ago(team_name, 0)))
-      m5_var(placard_p1_len, m5_length(m5_get_ago(team_name, 1)))
+      m5_var(p0_text, P1: m5_get_ago(team_name, 1))
+      m5_var(p1_text, P2: m5_get_ago(team_name, 0))
+      m5_var(placard_p0_len, m5_length(m5_p0_text))
+      m5_var(placard_p1_len, m5_length(m5_p1_text))
       m5_var(placard_len, m5_if(m5_placard_p0_len < m5_placard_p1_len, m5_placard_p1_len, m5_placard_p0_len))
-      m5_var(placard_width, m5_calc((m5_placard_len + 4) * 5))
+      m5_var(placard_width, m5_calc((m5_placard_len + 6) * 5))
       /placard
          // The "placard" showing team names.
          \viz_js
-            box: { width: m5_placard_width, height: 19, left: -m5_calc(m5_placard_width / 2),
-                   fill: "#dbc077", stroke: "#504020", strokeWidth: 0.5 },
+            box: { width: m5_placard_width, height: 19, left: 0,
+                   fill: "#dbc077", stroke: "#504020", strokeWidth: 1 },
             lib: {
                pixelFont: "Press Start 2P"
             },
@@ -905,20 +932,19 @@
                   const fontWidthCorrection = {
                      Silkscreen: 1.39,
                      "Pixelify Sans": 1.075,
-                     "Press Start 2P": 2.27,
+                     "Press Start 2P": 1.5,
                   };
                   
                   let p = this.getIndex();
-                  let playerLabel = (fill, offset) => {
+                  let playerLabel = (fill) => {
                      ret = new fabric.Text(
-                                `${p ? "m5_get_ago(team_name, 0)" : "m5_get_ago(team_name, 1)"}`,
-                                { left: offset, top: offset,
+                                `${p ? "m5_p1_text" : "m5_p0_text"}`,
+                                { left: 10, top: 0,
                                   fontFamily: '/placard'.pixelFont, fontSize: "5", fontWeight: 400,
-                                  originX: "center",
+                                  originX: "left",
                                   fill: p ? "#197610" : "#a31a1a",
                                 }
                             );
-                     ret.set({left: -ret.width * (fontWidthCorrection[ '/placard'.pixelFont] - 1) / 2});
                      return ret;
                   };
                   ret = {
@@ -954,7 +980,7 @@
 \TLV
    // Define teams.
    ///m5_team(random, Random 1)
-   m5_team(random, The Quick Brown Fox)
+   m5_team(random, T)
    ///m5_team(sitting_duck, Sitting Duck)
    m5_team(test1, Test 1)
    

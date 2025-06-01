@@ -25,6 +25,8 @@ Control circuits have inputs characterizing the visible the state of the system,
 
 The coordinate system is flipped 180 degrees between the opponents, around (0, 0) in the center, so the starting ship coordinates are the same for both opponents. The X dimension increases to the right, and the Y dimension increases upward.
 
+Ships are numbered 0, 1, 2 and have energy bars colored yellow, green, and blue, respectively. Players/teams are red and green, corresponding to 0 and 1 in the code, and, in VIZ, 1 and 2.
+
 Other game parameters like hit box and board sizes can be found at the top of `showdown_lib.tlv`.
 
 ## Coding Your Control Circuits
@@ -68,11 +70,15 @@ Spend the time to learn TL-Verilog first, if you are not already familiar. There
 
 If you don't know Verilog syntax, TL-Verilog uses Verilog `assign` expression syntax, so you learn this as well.
 
+To treat TL-Verilog signals (pipesignals) as signed, use `\$signed($my_sig)`.
+
 ### Verilog
 
 In the WAVEFORM viewer, you can find your signals under `SV.team_YOUR_GITHUB_ID` (which you must rename accordingly).
 
 The internet can help you learn Verilog.
+
+To take advantage of LLM coding, connect Makerchip to an external file ("Project"::"Connect File" menu).
 
 ### Debugging
 
