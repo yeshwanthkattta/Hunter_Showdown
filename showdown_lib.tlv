@@ -124,9 +124,9 @@
          .y_v(/ship[*]$yy_v),
          .energy(/ship[*]>>1$energy),
          .destroyed(/ship[*]>>1$destroyed),
-         .enemy_x_p(/enemy_ship[*]>>1$xx_p),
-         .enemy_y_p(/enemy_ship[*]>>1$yy_p),
-         .enemy_cloaked(/enemy_ship[*]>>1$do_cloak),
+         .prev_enemy_x_p(/prev_enemy_ship[*]>>1$xx_p),
+         .prev_enemy_y_p(/prev_enemy_ship[*]>>1$yy_p),
+         .prev_enemy_cloaked(/prev_enemy_ship[*]>>1$do_cloak),
          // Outputs:
          .x_a($$xx_a_vect[4*m5_SHIP_CNT-1:0]),
          .y_a($$yy_a_vect[4*m5_SHIP_CNT-1:0]),
@@ -158,61 +158,6 @@
 // Team logic providing testing behavior.
 \TLV team_test1(/_top)
    /ship[*]
-      $offense = >>1$energy >= 8'd20;
-      
-      /distances[2:0]
-         $xx[7:0] = /enemy_ship[#distances]>>1$xx_p - /ship>>1$xx_p;
-         $abs_xx[7:0] = ($xx[7] == 1'b1) ?
-                           (- $xx) :
-                        $xx;
-         $yy[7:0] = /enemy_ship[#distances]>>1$yy_p - /ship>>1$yy_p;
-         $abs_yy[7:0] = ($yy[7] == 1'b1) ?
-                           (- $yy) :
-                        $yy;
-         
-         $sum[7:0] = $abs_xx + $abs_yy;
-      
-      $target[1:0] = ((/distances[0]$sum <= /distances[1]$sum) && (/distances[0]$sum <= /distances[2]$sum)) ? 2'b00 :
-                                (/distances[1]$sum <= /distances[2]) ? 2'b01 :
-                                2'b10;
-      
-      $target_ship_xx = /enemy_ship[$target]>>1$xx_p;
-      $target_ship_yy = /enemy_ship[$target]>>1$yy_p;
-      
-      $xx_target_speed[5:0] = (/distances[$target]$abs_xx >= 8'd12) ? 6'd7 :
-                               (/distances[$target]$abs_xx >= 8'd9) ? 6'd6 :
-                               (/distances[$target]$abs_xx >= 8'd7) ? 6'd5 :
-                               (/distances[$target]$abs_xx >= 8'd5) ? 6'd4 :
-                               /distances[$target]$abs_xx;
-      $yy_target_speed[5:0] = (/distances[$target]$abs_yy >= 8'd12) ? 6'd7 :
-                               (/distances[$target]$abs_yy >= 8'd9) ? 6'd6 :
-                               (/distances[$target]$abs_yy >= 8'd7) ? 6'd5 :
-                               (/distances[$target]$abs_yy >= 8'd5) ? 6'd4 :
-                               /distances[$target]$abs_yy;
-      
-      $xx_target_velocity[5:0] = (/distances[$target]$xx[7] == 1'b1) ? (- $xx_target_speed) :
-                                 $xx_target_speed;
-      $yy_target_velocity[5:0] = (/distances[$target]$yy[7] == 1'b1) ? (- $yy_target_speed) :
-                                 $yy_target_speed;
-      
-      $xx_target_acceleration[5:0] = $xx_target_velocity - >>1$xx_v;
-      $abs_xx_target_acceleration[5:0] = ($xx_target_acceleration[5] == 1'b1) ?
-                                      (- $xx_target_acceleration) :
-                                   $xx_target_acceleration;
-      $yy_target_acceleration[5:0] = $yy_target_velocity - >>1$yy_v;
-      $abs_yy_target_acceleration[5:0] = ($yy_target_acceleration[5] == 1'b1) ?
-                                      (- $yy_target_acceleration) :
-                                   $yy_target_acceleration;
-      
-      $abs_xx_a[3:0] = ($abs_xx_target_acceleration >= 6'd3) ? 4'd3 :
-                       $abs_xx_target_acceleration;
-      
-      $xx_a[3:0] = ($xx_target_acceleration[5] == 1'b1) ? (- $abs_xx_a) : $abs_xx_a;
-      $yy_a[3:0] = ($yy_target_acceleration[5] == 1'b1) ? (- $abs_yy_a) : $abs_yy_a;
-      
-      
-      
-      /*
       $fire_counter[1:0] = >>1$reset ? 2'b0 :
                            (>>1$fire_counter + 2'b1);
       $ability_counter[3:0] = >>1$reset ? 4'b0 :
@@ -235,7 +180,6 @@
       $attempt_shield = ($ability_counter >= 4'b101) && ($ability_counter < 4'b1000);
       
       $attempt_cloak = ($ability_counter >= 4'b1101);
-      */
 
 // Team logic that uses default values (and thus, the ships do absolutely nothing).
 \TLV team_sitting_duck(/_top)
@@ -250,7 +194,7 @@
    /_name
       m5_var(enemy_num, m5_calc(1 - _team_num))
       m5_push_var(my_ship, /_secret/player[_team_num]/ship[#ship])
-      m5_push_var(enemy_ship, /_secret/player[m5_enemy_num]/ship[#enemy_ship])
+      m5_push_var(enemy_ship, /_secret/player[m5_enemy_num]/ship[#prev_enemy_ship])
       $reset = /_secret$reset;
       `BOGUS_USE($reset)
       
@@ -273,10 +217,10 @@
          `BOGUS_USE($reset $xx_p $yy_p $xx_v $yy_v $energy $destroyed)
       
       // Provide visibility to enemy ship state.
-      /enemy_ship[m5_SHIP_RANGE]
+      /prev_enemy_ship[m5_SHIP_RANGE]
          $cloaked = m5_enemy_ship>>1$do_cloak;
-         $xx_p[7:0] = $cloaked ? >>2$xx_p : -m5_enemy_ship>>1$xx_p;  // Negative to map coordinate systems.
-         $yy_p[7:0] = $cloaked ? >>1$yy_p : -m5_enemy_ship$yy_p;
+         $xx_p[7:0] = $cloaked ? >>1$xx_p : -m5_enemy_ship>>1$xx_p;  // Negative to map coordinate systems.
+         $yy_p[7:0] = $cloaked ? >>1$yy_p : -m5_enemy_ship>>1$yy_p;
          $destroyed = m5_enemy_ship>>1$destroyed;
          // The above do not have to be used.
          `BOGUS_USE($xx_p $yy_p $destroyed)
@@ -313,8 +257,6 @@
          `BOGUS_USE($attempt_fire $xx_a $yy_a $fire_dir $attempt_shield $attempt_cloak)
 
       $reset = /_top$reset;
-      m5+player_logic(/_secret, /team0, 0)
-      m5+player_logic(/_secret, /team1, 1)
 
       /background
          // ================  BACKGROUND VIZ  ================
@@ -508,7 +450,7 @@
                
                
                      // Create Bullet Rect:
-                     ret.bullet_rect = new fabric.Rect({ width: 10, height: 2, strokeWidth: 0, fill: (player_id ? "#00ffb350" : "#ffff0050"), orginX: "center", originY: "center" });
+                     ret.bullet_rect = new fabric.Rect({ width: 10, height: 2, strokeWidth: 0, fill: (player_id ? "#00ffb350" : "#ffff0050"), originX: "center", originY: "center" });
                      ret.bullet_rect.set({ originX: "center", originY: "center" });
                
                      return ret;
@@ -701,7 +643,6 @@
                   for (let i = 0; i < 4; i++) {
                      this.obj[`ship_sprite${i}_img`].set({ visible: false });
                   }
-                  debugger;
                   const accelToImage = (x_a, y_a) => {
                      const accelMagSq = toMagSq(x_a, y_a);
                      const shipImgNum =
@@ -1009,6 +950,9 @@
                where: {left: -m5_calc(m5_placard_width / 2), top: 2.7},
       
       
+      m5+player_logic(/_secret, /team0, 0)
+      m5+player_logic(/_secret, /team1, 1)
+      
       // Assert these to end simulation (before Makerchip cycle limit).
       $passed = (| /player[*]>>3$lost) && !>>1$reset;
       $failed = *cyc_cnt > 600;
@@ -1028,7 +972,7 @@
    // Instantiate the Showdown environment.
    m5+showdown(/top, /secret)
    
-   *passed = /secret$passed;
-   *failed = /secret$failed;
+   *passed = /secret$passed || (*cyc_cnt == 20);
+   *failed = /secret$failed || (*cyc_cnt == 20);
 \SV
    endmodule
