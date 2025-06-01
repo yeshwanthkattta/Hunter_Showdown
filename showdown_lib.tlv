@@ -48,8 +48,8 @@
    var(half_ship_width, m5_calc(m5_ship_width / 2))
    var(half_ship_height, m5_calc(m5_ship_height / 2))
    
-   var(default_anim_duration, 250)
-   var(default_anim_easing, easeOutCubic)  /// e.g. easeOutCubic or linear
+   var(default_anim_duration, 1000)
+   var(default_anim_easing, ['(t, b, c, d) => b + (t/d) * c'])  /// e.g. easeOutCubic or linear
    
    
    / Provide a library defining a team's control circuit, name, and ID.
@@ -175,6 +175,107 @@
 // An opponent providing random behavior.
 \TLV team_random(/_top)
    /ship[*]
+      $xx_acc[7:0] = #ship == 0 ?
+                      *cyc_cnt == 1 ? (8'd3) :
+                      *cyc_cnt == 2 ? (8'd3) :
+                      *cyc_cnt == 3 ? (8'd2) :
+                      *cyc_cnt == 5 ? (-8'd2) :
+                      *cyc_cnt == 6 ? (-8'd2) :
+                      *cyc_cnt == 7 ? (-8'd1) :
+                      *cyc_cnt == 8 ? (-8'd1) :
+                      *cyc_cnt == 9 ? (8'd2) :
+                      *cyc_cnt == 10 ? (8'd2) :
+                      *cyc_cnt == 12 ? (-8'd1) :
+                      *cyc_cnt == 13 ? (-8'd3) :
+                      *cyc_cnt == 14 ? (-8'd1) :
+                      *cyc_cnt == 15 ? (-8'd1) :
+                      8'd0 :
+                   #ship == 1 ?
+                      *cyc_cnt == 1 ? (8'd3) :
+                      *cyc_cnt == 2 ? (8'd3) :
+                      *cyc_cnt == 3 ? (8'd1) :
+                      *cyc_cnt == 4 ? (-8'd3) :
+                      *cyc_cnt == 5 ? (-8'd2) :
+                      *cyc_cnt == 7 ? (8'd1) :
+                      *cyc_cnt == 8 ? (-8'd1) :
+                      *cyc_cnt == 9 ? (8'd1) :
+                      *cyc_cnt == 10 ? (8'd3) :
+                      8'd0 :
+                   *cyc_cnt == 1 ? (8'd3) :
+                   *cyc_cnt == 2 ? (8'd3) :
+                   *cyc_cnt == 3 ? (8'd1) :
+                   *cyc_cnt == 7 ? (-8'd1) :
+                   *cyc_cnt == 8 ? (-8'd2) :
+                   *cyc_cnt == 9 ? (-8'd2) :
+                   *cyc_cnt == 10 ? (-8'd1) :
+                   *cyc_cnt == 11 ? (-8'd1) :
+                   *cyc_cnt == 13 ? (8'd1) :
+                   *cyc_cnt == 14 ? (8'd1) :
+                   8'd0;
+      
+      $yy_acc[3:0] = #ship == 0 ?
+                      *cyc_cnt == 1 ? (8'd2) :
+                      *cyc_cnt == 2 ? (8'd1) :
+                      *cyc_cnt == 8 ? (-8'd1) :
+                      *cyc_cnt == 9 ? (-8'd3) :
+                      *cyc_cnt == 10 ? (-8'd2) :
+                      *cyc_cnt == 11 ? (8'd1) :
+                      *cyc_cnt == 12 ? (8'd3) :
+                      *cyc_cnt == 13 ? (8'd3) :
+                      *cyc_cnt == 14 ? (8'd1) :
+                      *cyc_cnt == 16 ? (-8'd1) :
+                      *cyc_cnt == 17 ? (-8'd3) :
+                      *cyc_cnt == 18 ? (-8'd3) :
+                      *cyc_cnt == 19 ? (-8'd2) :
+                      *cyc_cnt == 20 ? (-8'd1) :
+                      8'd0 :
+                   #ship == 1 ?
+                      *cyc_cnt == 1 ? (8'd3) :
+                      *cyc_cnt == 2 ? (8'd3) :
+                      *cyc_cnt == 3 ? (8'd1) :
+                      *cyc_cnt == 7 ? (-8'd1) :
+                      *cyc_cnt == 8 ? (-8'd2) :
+                      *cyc_cnt == 9 ? (-8'd2) :
+                      *cyc_cnt == 10 ? (-8'd2) :
+                      8'd0 :
+                   *cyc_cnt == 4 ? (8'd1) :
+                   *cyc_cnt == 5 ? (8'd1) :
+                   *cyc_cnt == 6 ? (8'd1) :
+                   *cyc_cnt == 7 ? (8'd1) :
+                   *cyc_cnt == 8 ? (8'd1) :
+                   *cyc_cnt == 9 ? (8'd1) :
+                   *cyc_cnt == 10 ? (8'd1) :
+                   *cyc_cnt == 13 ? (8'd1) :
+                   8'd0;
+      
+      
+      
+      $attempt_fire = #ship == 0 ?
+                         (*cyc_cnt == 7) || (*cyc_cnt == 17) :
+                      #ship == 1 ?
+                         (*cyc_cnt == 4) :
+                      (*cyc_cnt == 6) || (*cyc_cnt == 16);
+      
+      $fire_dir[1:0] = #ship == 0 ?
+                          2'b11 :
+                       #ship == 1 ?
+                          2'b11 :
+                       (*cyc_cnt == 16) ? 2'b10 : 2'b11;
+      
+      $attempt_shield = #ship == 0 ?
+                           (*cyc_cnt >= 16) && (*cyc_cnt <= 19) :
+                        #ship == 1 ?
+                           (*cyc_cnt == 5) || (*cyc_cnt == 6) :
+                        1'b0;
+      
+      $attempt_cloak = #ship == 0 ?
+                          (*cyc_cnt >= 4) && (*cyc_cnt <= 10) :
+                       #ship == 1 ?
+                          1'b0 :
+                       1'b0;
+      
+      
+      /*
       m4_rand($rand, 31, 0, ship)
       $xx_acc[3:0] = $rand[3:0];
       $yy_acc[3:0] = $rand[7:4];
@@ -182,87 +283,94 @@
       $fire_dir[1:0] = $rand[10:9];
       $attempt_shield = $rand[11];
       $attempt_cloak = $rand[12];
+      */
 
-// An opponent providing testing behavior.
+// Team logic providing testing behavior.
 \TLV team_test1(/_top)
    /ship[*]
-      $offense = >>1$energy >= 8'd20;
+      $xx_acc[7:0] = #ship == 0 ?
+                      *cyc_cnt == 1 ? (-8'd3) :
+                      *cyc_cnt == 2 ? (-8'd2) :
+                      *cyc_cnt == 3 ? (-8'd1) :
+                      *cyc_cnt == 4 ? (8'd3) :
+                      *cyc_cnt == 5 ? (8'd3) :
+                      *cyc_cnt == 6 ? (8'd3) :
+                      *cyc_cnt == 7 ? (8'd3) :
+                      *cyc_cnt == 11 ? (-8'd2) :
+                      *cyc_cnt == 12 ? (-8'd3) :
+                      *cyc_cnt == 13 ? (-8'd3) :
+                      *cyc_cnt == 14 ? (8'd3) :
+                      *cyc_cnt == 15 ? (8'd2) :
+                      *cyc_cnt == 16 ? (-8'd3) :
+                      *cyc_cnt == 19 ? (8'd1) :
+                      *cyc_cnt == 20 ? (8'd1) :
+                      8'd0 :
+                   #ship == 1 ?
+                      *cyc_cnt == 1 ? (8'd3) :
+                      *cyc_cnt == 2 ? (8'd3) :
+                      *cyc_cnt == 3 ? (8'd1) :
+                      *cyc_cnt == 7 ? (-8'd2) :
+                      *cyc_cnt == 8 ? (8'd0) :
+                      8'd0 :
+                   *cyc_cnt == 1 ? (8'd3) :
+                   *cyc_cnt == 2 ? (8'd3) :
+                   *cyc_cnt == 3 ? (8'd1) :
+                   8'd0;
       
-      /distances[2:0]
-         $xx[7:0] = /_top/prev_enemy_ship[#distances]$xx_p - /ship>>1$xx_p;
-         $abs_xx[7:0] = ($xx[7] == 1'b1) ?
-                           (- $xx) :
-                        $xx;
-         $yy[7:0] = /_top/prev_enemy_ship[#distances]$yy_p - /ship>>1$yy_p;
-         $abs_yy[7:0] = ($yy[7] == 1'b1) ?
-                           (- $yy) :
-                        $yy;
-         
-         $sum[7:0] = $abs_xx + $abs_yy;
-      
-      $target[1:0] = 2'b0;
-      
-      $target_ship_xx[7:0] = /_top/prev_enemy_ship[0]$xx_p;
-      $target_ship_yy[7:0] = /_top/prev_enemy_ship[0]$yy_p;
-      
-      $xx_target_speed[5:0] = (/distances[$target]$abs_xx >= 8'd12) ? 6'd7 :
-                               (/distances[$target]$abs_xx >= 8'd9) ? 6'd6 :
-                               (/distances[$target]$abs_xx >= 8'd7) ? 6'd5 :
-                               (/distances[$target]$abs_xx >= 8'd5) ? 6'd4 :
-                               /distances[$target]$abs_xx;
-      $yy_target_speed[5:0] = (/distances[$target]$abs_yy >= 8'd12) ? 6'd7 :
-                               (/distances[$target]$abs_yy >= 8'd9) ? 6'd6 :
-                               (/distances[$target]$abs_yy >= 8'd7) ? 6'd5 :
-                               (/distances[$target]$abs_yy >= 8'd5) ? 6'd4 :
-                               /distances[$target]$abs_yy;
-      
-      $xx_target_velocity[5:0] = (/distances[$target]$xx[7] == 1'b1) ? (- $xx_target_speed) :
-                                 $xx_target_speed;
-      $yy_target_velocity[5:0] = (/distances[$target]$yy[7] == 1'b1) ? (- $yy_target_speed) :
-                                 $yy_target_speed;
-      
-      $xx_target_acceleration[5:0] = $xx_target_velocity - >>1$xx_v;
-      $abs_xx_target_acceleration[5:0] = ($xx_target_acceleration[5] == 1'b1) ?
-                                      (- $xx_target_acceleration) :
-                                   $xx_target_acceleration;
-      $yy_target_acceleration[5:0] = $yy_target_velocity - >>1$yy_v;
-      $abs_yy_target_acceleration[5:0] = ($yy_target_acceleration[5] == 1'b1) ?
-                                      (- $yy_target_acceleration) :
-                                   $yy_target_acceleration;
-      
-      $abs_xx_a[3:0] = ($abs_xx_target_acceleration >= 6'd3) ? 4'd3 :
-                       $abs_xx_target_acceleration;
-      $abs_yy_a[3:0] = ($abs_yy_target_acceleration >= 6'd3) ? 4'd3 :
-                       $abs_yy_target_acceleration;
-      
-      $xx_acc[3:0] = ($xx_target_acceleration[5] == 1'b1) ? (- $abs_xx_a) : $abs_xx_a;
-      $yy_acc[3:0] = ($yy_target_acceleration[5] == 1'b1) ? (- $abs_yy_a) : $abs_yy_a;
+      $yy_acc[3:0] = #ship == 0 ?
+                      *cyc_cnt == 1 ? (-8'd3) :
+                      *cyc_cnt == 2 ? (-8'd2) :
+                      *cyc_cnt == 3 ? (8'd1) :
+                      *cyc_cnt == 4 ? (8'd1) :
+                      *cyc_cnt == 6 ? (8'd3) :
+                      *cyc_cnt == 11 ? (8'd2) :
+                      *cyc_cnt == 12 ? (8'd2) :
+                      *cyc_cnt == 14 ? (8'd3) :
+                      *cyc_cnt == 15 ? (-8'd1) :
+                      *cyc_cnt == 16 ? (-8'd2) :
+                      *cyc_cnt == 17 ? (8'd3) :
+                      *cyc_cnt == 18 ? (8'd2) :
+                      8'd0 :
+                   #ship == 1 ?
+                      *cyc_cnt == 1 ? (8'd1) :
+                      *cyc_cnt == 2 ? (8'd2) :
+                      *cyc_cnt == 5 ? (-8'd2) :
+                      *cyc_cnt == 6 ? (-8'd2) :
+                      *cyc_cnt == 7 ? (-8'd1) :
+                      8'd0 :
+                   *cyc_cnt == 1 ? (-8'd1) :
+                   *cyc_cnt == 2 ? (-8'd1) :
+                   *cyc_cnt == 4 ? (8'd1) :
+                   *cyc_cnt == 5 ? (8'd2) :
+                   *cyc_cnt == 6 ? (8'd2) :
+                   8'd0;
       
       
-      /*
-      $fire_counter[1:0] = >>1$reset ? 2'b0 :
-                           (>>1$fire_counter + 2'b1);
-      $ability_counter[3:0] = >>1$reset ? 4'b0 :
-                             (>>1$ability_counter + 4'b1);
+      $attempt_fire = #ship == 0 ?
+                         (*cyc_cnt == 5) || (*cyc_cnt == 15) || (*cyc_cnt == 18) :
+                      #ship == 1 ?
+                         (*cyc_cnt == 8) :
+                      (*cyc_cnt == 5);
       
-      ///m4_rand($rand, 31, 0)
-      $xx_acc[3:0] = $reset ? 4'b11 :
-         ((>>1$xx_p + 8'b10000000) > (8'd56 + 8'b10000000)) ? 4'b1101 :
-         ((>>1$xx_p + 8'b10000000) < (- 8'd56 + 8'b10000000)) ? 4'b11 :
-         4'b0;
+      $fire_dir[1:0] = #ship == 0 ?
+                          (*cyc_cnt == 15) ? 2'b10 :
+                          (*cyc_cnt == 18) ? 2'b11 :
+                          2'b00 :
+                       #ship == 1 ?
+                          2'b1 :
+                       2'b11;
       
-      $yy_acc[3:0] = $reset ? 4'b11 :
-         ((>>1$yy_p + 8'b10000000) > (- 8'd22 + 8'b10000000)) ? 4'b1101 :
-         ((>>1$yy_p + 8'b10000000) < (- 8'd48 + 8'b10000000)) ? 4'b11 :
-         4'b0;
+      $attempt_shield = #ship == 0 ?
+                         (*cyc_cnt >= 8) && (*cyc_cnt <= 13) :
+                      #ship == 1 ?
+                         1'b0 :
+                      1'b0;
       
-      $attempt_fire = ($fire_counter == 2'b11);
-      $fire_dir[1:0] = 2'b11; //0 = right, 1 = down, 2 = left, 3 = up
-      
-      $attempt_shield = ($ability_counter >= 4'b101) && ($ability_counter < 4'b1000);
-      
-      $attempt_cloak = ($ability_counter >= 4'b1101);
-      */
+      $attempt_cloak = #ship == 0 ?
+                          1'b0 :
+                       #ship == 1 ?
+                          1'b0 :
+                       (*cyc_cnt >= 4);
 
 // An opponent that uses default values (and thus, the ships do absolutely nothing).
 \TLV team_sitting_duck(/_top)
@@ -599,7 +707,7 @@
                         top,
                      }, {
                         duration: m5_default_anim_duration,
-                        easing: fabric.util.ease.m5_default_anim_easing
+                        easing: m5_default_anim_easing
                      }).thenSet({ visible: is_bullet_exists });
                      // Animate bullet rect similarly:
                      this.obj.bullet_rect.set({
@@ -614,7 +722,7 @@
                         top,
                      }, {
                         duration: m5_default_anim_duration,
-                        easing: fabric.util.ease.m5_default_anim_easing
+                        easing: m5_default_anim_easing
                      }).thenSet({ visible: is_bullet_exists });
                   }
             
@@ -743,7 +851,6 @@
                   // Starting/ending angle are based on the next cycle's acceleration.
                   // When there is no acceleration, find the last acceleration to determine angle.
                   // So, determine was and is angles (with search and 1 cycle offset).
-                  debugger;
                   const getAccel = (step) => {
                      const $xx_a = '$xx_a'.step(step + 1);   // Angle is based on next cycle's value.
                      const $yy_a = '$yy_a'.step(step + 1);   //   "
@@ -808,7 +915,7 @@
                      opacity: toOpacity(is_do_cloak),
                   }, {
                      duration: m5_default_anim_duration,
-                     easing: fabric.util.ease.m5_default_anim_easing
+                     easing: m5_default_anim_easing
                   }).then(() => {
                      // Switch to ship reflecting current acceleration.
                      currentShipImage.set({visible: false});
@@ -833,7 +940,7 @@
                      opacity: toOpacityHitBox(is_do_cloak),
                   }, {
                      duration: m5_default_anim_duration,
-                     easing: fabric.util.ease.m5_default_anim_easing
+                     easing: m5_default_anim_easing
                   }).thenSet({
                       visible: !is_destroyed,
                       opacity: toOpacityHitBox(is_do_cloak),
@@ -849,7 +956,7 @@
                      top: -is_yy_p + energy_meter_y_offset,
                   }, {
                      duration: m5_default_anim_duration,
-                     easing: fabric.util.ease.m5_default_anim_easing
+                     easing: m5_default_anim_easing
                   }).thenSet({
                      visible: !is_destroyed
                   });
@@ -864,7 +971,7 @@
                      scaleX: is_energy / m5_max_energy,
                   }, {
                      duration: m5_default_anim_duration,
-                     easing: fabric.util.ease.m5_default_anim_easing
+                     easing: m5_default_anim_easing
                   }).thenSet({
                      visible: !is_destroyed
                   });
@@ -878,7 +985,7 @@
                      // Enlarge shield during animation.
                      scaleX: was_do_shield ? 1.0 : 0.0,
                      scaleY: was_do_shield ? 1.0 : 0.0,
-                     visible: val_do_shield && ! val_destroyed
+                     visible: (was_do_shield || is_do_shield) && ! val_destroyed
                   }).animate({
                      left: is_xx_p,
                      top: -is_yy_p,
@@ -886,7 +993,7 @@
                      scaleY: is_do_shield ? 1.0 : 0.0,
                   }, {
                      duration: m5_default_anim_duration,
-                     easing: fabric.util.ease.m5_default_anim_easing
+                     easing: m5_default_anim_easing
                   }).thenSet({
                      visible: ! is_destroyed && is_do_shield,
                      scaleX: is_shot ? 1.2 : 1.0,
