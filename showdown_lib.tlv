@@ -284,12 +284,14 @@
             }
 
       // Win logic:
-      $win_id[1:0] = /player[0]$lost ?
-                        /player[1]$lost ? 2'b11 :
-                        2'b01 :
-                     /player[1]$lost ? 2'b10 :
-                     2'b00;
-      
+      $lose_id[1:0] =
+         $reset              ? 2'd0 :
+         >>1$lose_id != 2'd0 ? >>1$lose_id :  // sticky
+         *cyc_cnt > 596 && (/player[*]$lost == 2'b0)  // max_cycles
+                             ? 2'b11 :
+         //default
+                               /player[*]$lost;
+
       
       // ||||||||||||||||  PLAYER LOGIC ||||||||||||||||
       /player[1:0]
@@ -530,7 +532,9 @@
                   let ret = {};
                   const player_id = (this.getIndex("player") == 1);
             
-            
+                  // Create Ship Rect:
+                  ret.ship_rect = new fabric.Rect({ width: 8, height: 8, strokeWidth: 0, fill: (player_id ? "#00ffb350" : "#ffff0050"), originX: "center", originY: "center" });
+                        
                   // Load Ship Images.
                   for (let i = 0; i < 4; i++) {
                      ret[`ship_sprite${i}_img`] = this.newImageFromURL(
@@ -562,9 +566,6 @@
                   ret.shield_meter_back = new fabric.Rect({ width: 10, height: 1.5, strokeWidth: 0, fill: "#b0b0b0ff", originX: "left", originY: "center", angle: player_id ? 180.0 : 0.0 });
                   ret.shield_meter = new fabric.Rect({ width: 10, height: 1.5, strokeWidth: 0, fill: "#17f7ffff", originX: "left", originY: "center", angle: player_id ? 180.0 : 0.0 });
             
-            
-                  // Create Ship Rect:
-                  ret.ship_rect = new fabric.Rect({ width: 8, height: 8, strokeWidth: 0, fill: (player_id ? "#00ffb350" : "#ffff0050"), originX: "center", originY: "center" });
             
             
                   // Load Explosion Images.
@@ -638,6 +639,7 @@
                   const finishMag = toMagSq(is_xx_a, cycle_xx_a);
                   
                   const toOpacity = (cloak) => cloak ? 0.25 : 1;
+                  const toOpacityHitBox = (cloak) => cloak ? 0.4 : 1;
                   const visible = ! val_destroyed;
             
                   // Select Current Ship Image.
@@ -645,7 +647,6 @@
                   for (let i = 0; i < 4; i++) {
                      this.obj[`ship_sprite${i}_img`].set({ visible: false });
                   }
-                  debugger;
                   const accelToImage = (x_a, y_a) => {
                      const accelMagSq = toMagSq(x_a, y_a);
                      const shipImgNum =
@@ -676,28 +677,32 @@
                      easing: fabric.util.ease.m5_default_anim_easing
                   })/**.then(() => {
                      // Switch to ship reflecting current acceleration.
-                     currentShipImage.set({visibility: false});
+                     currentShipImage.set({visible: false});
                      nextShipImg.set({
-                        visibility: !is_destroyed,
+                        visible: !is_destroyed,
                         opacity: toOpacity(is_do_cloak)
                      });
                   })**/
                   ;
                   
-                  // Animate ship hit box similarly, but no angle or opacity
+                  // Animate ship hit box similarly, but no angle
                   this.obj.ship_rect.set({
                      left: currentShipImage.left,
                      top: currentShipImage.top,
-                     visible: currentShipImage.visible
+                     opacity: toOpacityHitBox(was_do_cloak),
+                     visible
                   }).animate({
                      left: is_xx_p,
                      top: -is_yy_p,
+                     opacity: toOpacityHitBox(is_do_cloak),
                   }, {
                      duration: m5_default_anim_duration,
                      easing: fabric.util.ease.m5_default_anim_easing
-                  }).thenSet({
-                      visible: !is_destroyed
-                  });
+                  })/**.thenSet({
+                      visible: !is_destroyed,
+                        opacity: toOpacityHiBox(is_do_cloak)
+                  })**/
+                  ;
 
                   // Animate shield meter
                   this.obj.shield_meter_back.set({
@@ -789,40 +794,22 @@
             {
                let ret = {};
          
-               // Load End Screens:
-               ret.p1win_img = this.newImageFromURL(
-                  "https://raw.githubusercontent.com/PigNeck/space-scuffle/main/end_screens/p1win.png",
-                  "",
-                  { originX: "center",
-                     left: 0, top: 0,
-                     width: 108, height: 100,
-                     imageSmoothing: false,
-                     visible: true }
-               );
-               ret.p1win_img.set({visible: false});
-         
-               ret.p2win_img = this.newImageFromURL(
-                  "https://raw.githubusercontent.com/PigNeck/space-scuffle/main/end_screens/p2win.png",
-                  "",
-                  { originX: "center",
-                     left: 0, top: 0,
-                     width: 108, height: 100,
-                     imageSmoothing: false,
-                     visible: true }
-               );
-               ret.p2win_img.set({visible: false});
-         
-               ret.tie_img = this.newImageFromURL(
-                  "https://raw.githubusercontent.com/PigNeck/space-scuffle/main/end_screens/tie.png",
-                  "",
-                  { originX: "center",
-                     left: 0, top: 0,
-                     width: 108, height: 100,
-                     imageSmoothing: false,
-                     visible: true }
-               );
-               ret.tie_img.set({visible: false});
-         
+               // Load End Screens.
+               const loadEndImg = (file) =>
+                  this.newImageFromURL(
+                     `https://raw.githubusercontent.com/PigNeck/space-scuffle/main/end_screens/${file}`,
+                     "",
+                     { originX: "center",
+                        left: 0, top: 0,
+                        width: 108, height: 100,
+                        imageSmoothing: false,
+                        visible: true,   // Note, this is the visibility of the Image, whereas the returned Object is a group.
+                     }
+                  );
+               
+               ret.p1win_img = loadEndImg("p1win.png").set({ visible: false });
+               ret.p2win_img = loadEndImg("p2win.png").set({ visible: false });
+               ret.tie_img   = loadEndImg("tie.png")  .set({ visible: false });
          
                // Create Background Masking Rects:
                ret.mask0 = new fabric.Rect({ left: 96, top: 0, width: 64, height: 256, strokeWidth: 0, fill: "#ffffffff", originX: "center", originY: "center" });
@@ -838,7 +825,8 @@
                   { originX: "center", originY: "center",
                      left: 0, top: 0,
                      width: 190, height: 190,
-                     imageSmoothing: false }
+                     imageSmoothing: false
+                  }
                );
          
                return ret;
@@ -855,18 +843,17 @@
               
                const forward = this.steppedBy() >= 0;
                const step = forward ? -1 : 1;   // The offset (step) for the cycle from which to animate.
-               m5_sig(win_id, Int, anim, /_secret>>1)
-               const animate = is_win_id != was_win_id;
-               const win_id = forward ? is_win_id : was_win_id;
+               m5_sig(lose_id, Int, set, /_secret>>1)
+               const animate = is_lose_id != was_lose_id;
+               const lose_id = forward ? is_lose_id : was_lose_id;
                const endScreen =
-                      (win_id == 1) ? this.obj.p1win_img :
-                      (win_id == 2) ? this.obj.p2win_img :
-                                      this.obj.tie_img;
+                      (lose_id == 1) ? this.obj.p2win_img :
+                      (lose_id == 2) ? this.obj.p1win_img :
+                                       this.obj.tie_img;
                // Animate Y coords.
                const up = -164;
                const down = -64;
-               //- console.log(`steppedBy: ${this.steppedBy()}, is_win_id: ${is_win_id}, was_win_id: ${was_win_id}, win_id: ${win_id}`);
-               if (animate || win_id != 0) {
+               if (animate || lose_id != 0) {
                   endScreen.set({visible: true, top: (animate && forward) ? up : down});
                   if (animate) {
                      endScreen.animate({
@@ -875,21 +862,23 @@
                         duration: 1000,
                         easing: fabric.util.ease.easeOutCubic
                      });
-                  } else if (win_id != 0) {
+                  } else if (lose_id != 0) {
                      endScreen.set({visible: true, top: -64});
                   }
                }
             }
-            
+      
+      
       // ==================== Placard =================
       m5_var(placard_p0_len, m5_length(m5_get_ago(team_name, 0)))
       m5_var(placard_p1_len, m5_length(m5_get_ago(team_name, 1)))
       m5_var(placard_len, m5_if(m5_placard_p0_len < m5_placard_p1_len, m5_placard_p1_len, m5_placard_p0_len))
-      m5_var(placard_width, m5_calc((m5_placard_len + 12) * 4))
+      m5_var(placard_width, m5_calc((m5_placard_len + 4) * 5))
       /placard
          // The "placard" showing team names.
          \viz_js
-            box: { width: m5_placard_width, height: 19, left: -m5_calc(m5_placard_width / 2), fill: "#dbc077", stroke: "#504020", strokeWidth: 0.5 },
+            box: { width: m5_placard_width, height: 19, left: -m5_calc(m5_placard_width / 2),
+                   fill: "#dbc077", stroke: "#504020", strokeWidth: 0.5 },
             lib: {
                pixelFont: "Press Start 2P"
             },
@@ -922,11 +911,11 @@
                   let p = this.getIndex();
                   let playerLabel = (fill, offset) => {
                      ret = new fabric.Text(
-                                `${p ? "Green: m5_get_ago(team_name, 0)" : "Yellow: m5_get_ago(team_name, 1)"}`,
+                                `${p ? "m5_get_ago(team_name, 0)" : "m5_get_ago(team_name, 1)"}`,
                                 { left: offset, top: offset,
                                   fontFamily: '/placard'.pixelFont, fontSize: "5", fontWeight: 400,
                                   originX: "center",
-                                  fill
+                                  fill: p ? "#197610" : "#a31a1a",
                                 }
                             );
                      ret.set({left: -ret.width * (fontWidthCorrection[ '/placard'.pixelFont] - 1) / 2});
@@ -936,7 +925,7 @@
                      //shine: playerLabel("#ffefc0", 0.15),
                      label: playerLabel("#504020", 0),
                   };
-                  /* */
+                  
                   ret.test =
                      new fabric.Rect({
                           left: ret.label.left,
@@ -950,7 +939,7 @@
                   /* */
                   return ret;
                },
-               where: {left: -m5_calc(m5_placard_width / 2), top: 2.7},
+               where: {left: -m5_calc(m5_placard_width / 2), top: 2.7,},
       
       
       // Assert these to end simulation (before Makerchip cycle limit).
@@ -965,7 +954,7 @@
 \TLV
    // Define teams.
    ///m5_team(random, Random 1)
-   m5_team(random, Random 2)
+   m5_team(random, The Quick Brown Fox)
    ///m5_team(sitting_duck, Sitting Duck)
    m5_team(test1, Test 1)
    

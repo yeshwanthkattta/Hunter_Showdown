@@ -23,10 +23,9 @@ Ships are destroyed when they are shot or when their hit box exits the play area
 
 Control circuits have inputs characterizing the visible the state of the system, and they provide outputs that affect this state on the next cycle. Acceleration is applied as an instantaneous burst that immediately affects velocity, which affects the position on the next cycle. The VIZ tab on a given cycle reflects the state as update by the inputs on that cycle.
 
-The coordinate system is turned 180 degrees between the opponents, so the starting
-ship coordinates are the same for both opponents.
+The coordinate system is flipped 180 degrees between the opponents, around (0, 0) in the center, so the starting ship coordinates are the same for both opponents. The X dimension increases to the right, and the Y dimension increases upward.
 
-Game parameters like hit box and board sizes can be found at the top of `showdown_lib.tlv`.
+Other game parameters like hit box and board sizes can be found at the top of `showdown_lib.tlv`.
 
 ## Coding Your Control Circuits
 
@@ -75,6 +74,14 @@ In the WAVEFORM viewer, you can find your signals under `SV.team_YOUR_GITHUB_ID`
 
 The internet can help you learn Verilog.
 
+### Debugging
+
+Assert `*passed` and/or `*failed` using, e.g., ` || *cyc_cnt > 50`, to limit simulation for testing.
+
+### VIZ
+
+Contestants are encouraged to use VIZ for debugging. Documentation is available in the Makerchip IDE. Custom VIZ features, however should be disabled in your final submission. Obstructive VIZ may result in disqualification.
+
 ### Seeking Help
 
 Seek help in Slack. Help others. A bit of competition can add to the fun, but the spirit of the competition is collaboration and community building.
@@ -85,4 +92,4 @@ Details of the competition structure will be determined close to the competition
 
 Your submission must be based on the latest Verilog or TL-Verilog template. Bug fixes in the templates and Showdown library may be required during the coding period.
 
-Inconsiderate behavior will not be tolerated and may result in disqualification. In the event of logic bugs, disputes, ambiguity, disqualification, etc., Redwood EDA, LLC's decisions are final and may result in lose of prize money.
+Inconsiderate behavior will not be tolerated and may result in disqualification. In the event of disputes, ambiguity, library/template bugs affecting outcomes, disqualification, etc., Redwood EDA, LLC's decisions are final and may result in lose of prize money. Details can be found in the [Showdown Terms and Conditions](https://www.redwoodeda.com/showdown-terms).
