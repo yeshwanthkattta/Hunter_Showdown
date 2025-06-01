@@ -30,8 +30,8 @@
    var(shield_cost, 25)    /// the energy cost of using your shield (each active cycle)
    
    / Max acceleration and velocity
-   var(max_acceleration, 4)
-   var(max_velocity, 8)
+   var(max_acceleration, 4'd4)
+   var(max_velocity, 6'd8)
    
    define_hier(BULLET, 5, 0)    /// max number of bullets
    
@@ -74,8 +74,7 @@
    
    / Cap a signed signal at a max value.
    fn(cap, Sig, MaxBit, Max, {
-      var(UnsignedVal, m5_Sig[m5_calc(m5_MaxBit-1):0])
-      ~(m5_Sig[m5_MaxBit] ? ((-m5_UnsignedVal > m5_Max) ? -m5_Max : m5_Sig) : (( m5_UnsignedVal > m5_Max) ?  m5_Max : m5_Sig))
+      ~(m5_Sig[m5_MaxBit] ? ((-m5_Sig > m5_Max) ? -m5_Max : m5_Sig) : (( m5_Sig > m5_Max) ?  m5_Max : m5_Sig))
    })
    
    
@@ -219,7 +218,6 @@
       
       $xx_a[3:0] = ($xx_target_acceleration[5] == 1'b1) ? (- $abs_xx_a) : $abs_xx_a;
       $yy_a[3:0] = ($yy_target_acceleration[5] == 1'b1) ? (- $abs_yy_a) : $abs_yy_a;
-      
       
       
       /*
@@ -382,9 +380,13 @@
             // Inputs from team logic.
             $ANY = /player$player_id ? /_secret/team1/ship$ANY : /_secret/team0/ship$ANY;
             `BOGUS_USE($dummy)  // Make sure this is pulled through the $ANY chain from /defaults to prevent empty $ANYs.
+            $test = -$xx_acc[2:0] > 4;
+            $test2 = -$xx_acc > 4'd4;
+            $test3 = -\$signed($xx_acc) > 4;
             // Cap acceleration.
             $xx_a[3:0] = m5_cap($xx_acc, 3, m5_max_acceleration);
             $yy_a[3:0] = m5_cap($yy_acc, 3, m5_max_acceleration);
+            `BOGUS_USE($xx_acc[3:0] $yy_acc[3:0])
             
             
             // Recoup energy, capped by max.
