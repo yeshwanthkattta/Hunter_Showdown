@@ -33,7 +33,7 @@
       input signed logic [m5_SHIP_RANGE][7:0] prev_enemy_x_p, input signed logic [m5_SHIP_RANGE][7:0] prev_enemy_y_p,   // Positions of enemy ships as updated by their control logic last cycle.
       input logic [m5_SHIP_RANGE] prev_enemy_cloaked,   // Whether the enemy ships are cloaked, in which case their prev_enemy_x_p and prev_enemy_y_p will not update.
       // Outputs:
-      output signed logic [m5_SHIP_RANGE][3:0] x_a, output signed logic [m5_SHIP_RANGE][3:0] y_a,  // Attempted acceleration for each of your ships.
+      output signed logic [m5_SHIP_RANGE][3:0] x_a, output signed logic [m5_SHIP_RANGE][3:0] y_a,  // Attempted acceleration for each of your ships; capped by max_acceleration (see showdown_lib.tlv).
       output logic [m5_SHIP_RANGE] attempt_fire, output logic [m5_SHIP_RANGE] attempt_shield, [m5_SHIP_RANGE] attempt_cloak,  // Attempted actions for each of your ships.
       output logic [m5_SHIP_RANGE][1:0] fire_dir   // Direction to fire (if firing). ( 0 = right, 1 = down, 2 = left, 3 = up)
    );
@@ -61,7 +61,7 @@
 \TLV
    // Enlist teams for battle.
    
-   // Your team as Player 1. Provide:
+   // Your team as the first player. Provide:
    //   - your GitHub ID, (as in your \TLV team_* macro, above)
    //   - your team name--anything you like (that isn't crude or disrespectful)
    m5_team(YOUR_GITHUB_ID, YOUR_TEAM_NAME)

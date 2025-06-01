@@ -64,7 +64,7 @@ resources to get you started under Makerchip's "Learn" menu.
 
 ### TL-Verilog
 
-In the WAVEFORM viewer, using the template, your signals will appear under `TLV/secret/team0` or `/secret/team1`. Other signals will not be accessible to you. Though in the template, you can access them through `/secret`, for final competition, `/secret` will be renamed. Your design will not compile for competition if you attempt to access `/secret` signals.
+In the WAVEFORM viewer and DIAGRAM, using the template, your signals will appear under `TLV/secret/team0` or `/secret/team1`. Other signals will not be accessible to you. Though in the template, you can access them through `/secret`, for final competition, `/secret` will be renamed. Your design will not compile for competition if you attempt to access `/secret` signals.
 
 Spend the time to learn TL-Verilog first, if you are not already familiar. There are learning resources in the Makerchip IDE. For this competition, you can build reasonable circuits as combinational logic, so pipelines, sequential logic, "alignment", and states are likely unimportant. Hierarchy will be useful to learn. Other tutorial topics, validity, TLV macros, and transaction flow, though they may be used heavily by the Showdown library and template, are less important for your logic.
 
@@ -76,11 +76,11 @@ Ternary expressions are king in TL-Verilog. Make sure you understand how to use 
 
 ### Verilog
 
-In the WAVEFORM viewer, you can find your signals under `SV.team_YOUR_GITHUB_ID` (which you must rename accordingly).
+In the WAVEFORM viewer, you can find your signals under `SV.team_YOUR_GITHUB_ID` (which you must rename accordingly). Sadly, the DIAGRAM will be of no use to you.
 
 The internet can help you learn Verilog.
 
-To take advantage of LLM coding, connect Makerchip to an external file ("Project"::"Connect File" menu).
+To take advantage of LLM coding, connect Makerchip to an external file ("Project"::"Connect File" menu) and use and editor with an LLM assistant, like GitHub Copilot.
 
 ### Debugging
 
