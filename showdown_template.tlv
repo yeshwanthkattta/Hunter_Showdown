@@ -30,7 +30,7 @@
    / /ship[2:0]
    /    *clk:           Clock; used implicitly by TL-Verilog constructs, but you can use this in embedded Verilog.
    /    $reset:         Reset.
-   /    $xx_v[5:0], $yy_v[5:0]: Velocity of your ships (use "\$signed($xx_v) for math).
+   /    $xx_p[7:0], $yy_p[7:0]: Position of your ships as affected by previous cycle's acceleration (use "\$signed($xx_p) for math).
    /    $energy[7:0]:   The energy supply of each ship, as updated by inputs last cycle.
    /    $destroyed:     Asserted if and when the ships are destroyed.
    / /prev_enemy_ship[2:0]: Reflecting enemy input in the previous cycle.

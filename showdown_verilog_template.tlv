@@ -27,15 +27,15 @@
    module team_YOUR_GITHUB_ID (
       // Inputs:
       input logic clk, input logic reset,
-      input logic [m5_SHIP_RANGE][5:0] signed x_v, input logic [m5_SHIP_RANGE][7:0] signed y_v,   // Velocity of your ships.
-      input logic [m5_SHIP_RANGE][7:0] energy,   // The energy supply of each ship.
+      input logic signed [7:0] x [m5_SHIP_RANGE], input logic signed [7:0] y [m5_SHIP_RANGE],   // Positions of your ships, as affected by last cycle's acceleration.
+      input logic [7:0] energy [m5_SHIP_RANGE],   // The energy supply of each ship, as affected by last cycle's actions.
       input logic [m5_SHIP_RANGE] destroyed,   // Asserted if and when the ships are destroyed.
-      input logic [m5_SHIP_RANGE][7:0] signed prev_enemy_x_p, input logic [m5_SHIP_RANGE][7:0] signed prev_enemy_y_p,   // Positions of enemy ships as affected by their acceleration last cycle.
-      input logic [m5_SHIP_RANGE] prev_enemy_cloaked,   // Whether the enemy ships are cloaked, in which case their prev_enemy_x_p and prev_enemy_y_p will not update.
+      input logic signed [7:0] enemy_x_p [m5_SHIP_RANGE], input logic signed [7:0] enemy_y_p [m5_SHIP_RANGE],   // Positions of enemy ships as affected by their acceleration last cycle.
+      input logic [m5_SHIP_RANGE] enemy_cloaked,   // Whether the enemy ships are cloaked, in which case their enemy_x_p and enemy_y_p will not update.
       // Outputs:
-      output logic [m5_SHIP_RANGE][3:0] signed x_a, output logic [m5_SHIP_RANGE][3:0] signed y_a,  // Attempted acceleration for each of your ships; capped by max_acceleration (see showdown_lib.tlv).
+      output logic signed [3:0] x_a [m5_SHIP_RANGE], output logic signed [3:0] y_a [m5_SHIP_RANGE],  // Attempted acceleration for each of your ships; capped by max_acceleration (see showdown_lib.tlv).
       output logic [m5_SHIP_RANGE] attempt_fire, output logic [m5_SHIP_RANGE] attempt_shield, output logic [m5_SHIP_RANGE] attempt_cloak,  // Attempted actions for each of your ships.
-      output logic [m5_SHIP_RANGE][1:0] fire_dir   // Direction to fire (if firing). ( 0 = right, 1 = down, 2 = left, 3 = up)
+      output logic [1:0] fire_dir [m5_SHIP_RANGE]   // Direction to fire (if firing). ( 0 = right, 1 = down, 2 = left, 3 = up)
    );
    
    // Parameters defining the valid ranges of input/output values can be found near the top of "showdown_lib.tlv".

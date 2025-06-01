@@ -125,29 +125,48 @@
 // (alphabetic, numeric, and "_" only)
 \TLV verilog_wrapper(/_top, _github_id)
    \SV_plus
+      logic signed [7:0] energy [m5_SHIP_RANGE];
+      logic signed [7:0] x [m5_SHIP_RANGE];
+      logic signed [7:0] y [m5_SHIP_RANGE];
+      logic signed [7:0] enemy_x_p [m5_SHIP_RANGE];
+      logic signed [7:0] enemy_y_p [m5_SHIP_RANGE];
+      logic signed [3:0] x_a [m5_SHIP_RANGE];
+      logic signed [3:0] y_a [m5_SHIP_RANGE];
+      logic [1:0] fire_dir [m5_SHIP_RANGE];
       team_['']_github_id team_['']_github_id(
          // Inputs:
          .clk(clk),
          .reset(/_top$reset),
-         .x_v(/ship[*]$xx_v),
-         .y_v(/ship[*]$yy_v),
-         .energy(/ship[*]>>1$energy),
+         .x(x),
+         .y(y),
+         .energy(energy),
          .destroyed(/ship[*]>>1$destroyed),
-         .enemy_x_p(/prev_enemy_ship[*]$xx_p),
-         .enemy_y_p(/prev_enemy_ship[*]$yy_p),
+         .enemy_x_p(enemy_x_p),
+         .enemy_y_p(enemy_y_p),
          .enemy_cloaked(/prev_enemy_ship[*]$cloaked),
          // Outputs:
-         .x_a($$xx_acc_vect[4*m5_SHIP_CNT-1:0]),
-         .y_a($$yy_acc_vect[4*m5_SHIP_CNT-1:0]),
+         .x_a(x_a),
+         .y_a(y_a),
          .attempt_fire(/ship[*]$$attempt_fire),
          .attempt_shield(/ship[*]$$attempt_shield),
          .attempt_cloak(/ship[*]$$attempt_cloak),
-         .fire_dir($$fire_dir_vect[2*m5_SHIP_CNT-1:0])
+         .fire_dir(fire_dir)
       );
+   /prev_enemy_ship[*]
+      \SV_plus
+         assign *enemy_x_p[prev_enemy_ship] = $xx_p;
+         assign *enemy_y_p[prev_enemy_ship] = $yy_p;
    /ship[*]
-      $xx_acc[3:0] = /_top$xx_acc_vect[4 * (#ship + 1) - 1 : 4 * #ship];
-      $yy_acc[3:0] = /_top$yy_acc_vect[4 * (#ship + 1) - 1 : 4 * #ship];
-      $fire_dir[1:0] = /_top$fire_dir_vect[2 * (#ship + 1) - 1 : 2 * #ship];
+      \SV_plus
+         assign *x[ship] = >>1$xx_p;
+         assign *y[ship] = >>1$yy_p;
+         assign *energy[ship] = >>1$energy;
+         assign $$xx_acc[3:0] = *x_a[ship];
+         assign $$yy_acc[3:0] = *y_a[ship];
+         assign $$fire_dir[1:0] = *fire_dir[ship];
+      //$xx_acc[3:0] = /_top$xx_acc_vect[4 * (ship + 1) - 1 : 4 * ship];
+      //$yy_acc[3:0] = /_top$yy_acc_vect[4 * (ship + 1) - 1 : 4 * ship];
+      //$fire_dir[1:0] = /_top$fire_dir_vect[2 * (ship + 1) - 1 : 2 * ship];
 
 
 
@@ -417,8 +436,8 @@
             // Update velocity and position, based on acceleration.
             
             // Cap velocity.
-            $xx_vel[5:0] = $reset ? 6'b0 + m5_sign_extend($xx_a, 3, 2) : >>1$xx_v + m5_sign_extend($xx_a, 3, 2);
-            $yy_vel[5:0] = $reset ? 6'b0 + m5_sign_extend($yy_a, 3, 2) : >>1$yy_v + m5_sign_extend($yy_a, 3, 2);
+            $xx_vel[5:0] = $reset ? 6'b0 : >>1$xx_v + m5_sign_extend($xx_a, 3, 2);
+            $yy_vel[5:0] = $reset ? 6'b0 : >>1$yy_v + m5_sign_extend($yy_a, 3, 2);
             $xx_v[5:0] = m5_cap($xx_vel, 5, m5_max_velocity);
             $yy_v[5:0] = m5_cap($yy_vel, 5, m5_max_velocity);
             
@@ -568,9 +587,6 @@
                      const left = backwardFire ? is_xx_p : is_bullet_x;
                      const top =  -(backwardFire ? is_yy_p : is_bullet_y);
                      // Animate bullet image:
-                     if (player_id == 1 && this.getIndex("ship") == 1 && this.getIndex() == 0) {
-                        console.log(`was_bullet_exists: ${was_bullet_exists}, is_bullet_exists: ${is_bullet_exists}`);
-                     }
                      this.obj.bullet_img.set({
                         visible: was_bullet_exists || is_bullet_exists,
                         opacity: was_bullet_exists ? 1 : 0,
@@ -723,24 +739,34 @@
                   const energy_meter_y_offset = player_id ? -9 : 9;
             
             
-                  // Determine the correct starting and ending angles for the ship for this cycle
-                  const $cycle_xx_a = '$xx_a'.step(animCyc);
-                  const $cycle_yy_a = '$yy_a'.step(animCyc);
-                  while (($cycle_xx_a.asSignedInt() == 0) && ($cycle_yy_a.asSignedInt() == 0))
-                  {
-                     $cycle_xx_a.stepTransition(-1);
-                     $cycle_yy_a.stepTransition(-1);
+                  // Determine the correct starting and ending angles for the ship for this cycle.
+                  // Starting/ending angle are based on the next cycle's acceleration.
+                  // When there is no acceleration, find the last acceleration to determine angle.
+                  // So, determine was and is angles (with search and 1 cycle offset).
+                  debugger;
+                  const getAccel = (step) => {
+                     const $xx_a = '$xx_a'.step(step + 1);   // Angle is based on next cycle's value.
+                     const $yy_a = '$yy_a'.step(step + 1);   //   "
+                     while (($xx_a.asSignedInt() == 0) && ($yy_a.asSignedInt() == 0))
+                     {
+                        $xx_a.stepTransition(-1);
+                        $yy_a.stepTransition(-1);
+                     }
+                     return [$xx_a.asSignedInt(1), $yy_a.asSignedInt(1)];
                   }
-                  const cycle_xx_a = $cycle_xx_a.asSignedInt(1);
-                  const cycle_yy_a = $cycle_yy_a.asSignedInt(1);
+                  let [angle_was_xx_a, angle_was_yy_a] = getAccel(step);
+                  let [angle_is_xx_a,  angle_is_yy_a ] = getAccel(0);
                   // Transition between angle of acceleration before and after.
                   const toAngle = (x, y) => -(Math.atan2(y, x) * 180 / Math.PI) + 90;
-                  const set_angle = toAngle(was_xx_a, was_yy_a);
-                  const animate_angle = toAngle(is_xx_a, is_yy_a);
+                  const set_angle = toAngle(angle_was_xx_a, angle_was_yy_a);
+                  let animate_angle = toAngle(angle_is_xx_a, angle_is_yy_a);
+                  // If the animate_angle is more than 180 degrees from the set_angle, adjust to minimize spin.
+                  if (animate_angle > set_angle + 180) {animate_angle -= 360;}
+                  if (animate_angle < set_angle - 180) {animate_angle += 360;}
                   // Use acceleration at the cycle we are transitioning over, then update for current cycle.
                   const toMagSq = (x, y) => x ** 2 + y ** 2;
-                  const accelMag = toMagSq(cycle_xx_a, cycle_yy_a);
-                  const finishMag = toMagSq(is_xx_a, cycle_xx_a);
+                  const accelMag = toMagSq(val_xx_a, val_yy_a);
+                  const finishMag = toMagSq(is_xx_a, is_xx_a);
                   
                   const toOpacity = (cloak) => cloak ? 0.25 : 1;
                   const toOpacityHitBox = (cloak) => cloak ? 0.4 : 1;
@@ -786,7 +812,6 @@
                   }).then(() => {
                      // Switch to ship reflecting current acceleration.
                      currentShipImage.set({visible: false});
-                     debugger;
                      nextShipImage.set({
                         left: is_xx_p,
                         top: -is_yy_p,
@@ -869,7 +894,6 @@
                   })
 
                   // Animate explosion if applicable:
-                  console.log(`val_destroyed: ${val_destroyed}, prev_val_destroyed: ${'>>1$destroyed'.step(animCyc - 1).asBool()}`);
                   if (val_destroyed && ! '>>1$destroyed'.step(animCyc - 1).asBool())
                   {
                      for (let i = 0; i < 5; i++)
@@ -1063,20 +1087,21 @@
 
 
 
-
 \SV
    m5_makerchip_module
 \TLV
+   m5_team(YOUR_GITHUB_ID, YOUR_TEAM_NAME)
+
    // Define teams.
-   ///m5_team(random, Random 1)
-   m5_team(random, T)
+   m5_team(random, Random 1)
+   ///m5_team(random, Random 2)
    ///m5_team(sitting_duck, Sitting Duck)
    m5_team(test1, Test 1)
    
    // Instantiate the Showdown environment.
    m5+showdown(/top, /secret)
    
-   *passed = /secret$passed || (*cyc_cnt == 20);
+   *passed = /secret$passed;
    *failed = /secret$failed || (*cyc_cnt == 20);
 \SV
    endmodule
