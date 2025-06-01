@@ -9,7 +9,7 @@
    
    define_hier(SHIP, 3, 0)   /// number of ships
    
-   / The board (play area) is 128x128, centered at 0,0.
+   / The board (play area) spans -64..64, centered at 0,0.
    
    / Ship and bullet hit box width/height
    var(ship_width, 8)
@@ -153,18 +153,18 @@
 
 // --------------- Sample player logic ---------------
 
-// Team logic providing random behavior.
+// An opponent providing random behavior.
 \TLV team_random(/_top)
    /ship[*]
       m4_rand($rand, 31, 0, ship)
-      $xx_acc[3:0] = {$rand[3], 1'b0, $rand[1:0]};
-      $yy_acc[3:0] = {$rand[7], 1'b0, $rand[5:4]};
+      $xx_acc[3:0] = $rand[3:0];
+      $yy_acc[3:0] = $rand[7:4];
       $attempt_fire = $rand[8];
       $fire_dir[1:0] = $rand[10:9];
       $attempt_shield = $rand[11];
       $attempt_cloak = $rand[12];
 
-// Team logic providing testing behavior.
+// An opponent providing testing behavior.
 \TLV team_test1(/_top)
    /ship[*]
       $offense = >>1$energy >= 8'd20;
@@ -216,8 +216,8 @@
       $abs_yy_a[3:0] = ($abs_yy_target_acceleration >= 6'd3) ? 4'd3 :
                        $abs_yy_target_acceleration;
       
-      $xx_a[3:0] = ($xx_target_acceleration[5] == 1'b1) ? (- $abs_xx_a) : $abs_xx_a;
-      $yy_a[3:0] = ($yy_target_acceleration[5] == 1'b1) ? (- $abs_yy_a) : $abs_yy_a;
+      $xx_acc[3:0] = ($xx_target_acceleration[5] == 1'b1) ? (- $abs_xx_a) : $abs_xx_a;
+      $yy_acc[3:0] = ($yy_target_acceleration[5] == 1'b1) ? (- $abs_yy_a) : $abs_yy_a;
       
       
       /*
@@ -245,7 +245,7 @@
       $attempt_cloak = ($ability_counter >= 4'b1101);
       */
 
-// Team logic that uses default values (and thus, the ships do absolutely nothing).
+// An opponent that uses default values (and thus, the ships do absolutely nothing).
 \TLV team_sitting_duck(/_top)
    /ship[*]
 
@@ -289,14 +289,15 @@
          // The above do not have to be used.
          `BOGUS_USE($xx_p $yy_p $destroyed)
       
-      m5_pop(my_ship, enemy_ship)   /// To avoid exposure to secret.
+      m5_pop(my_ship, enemy_ship)   /// To avoid exposureing /_secret.
       // ------ Instantiate Team Macro ------
       m5+call(team_\m5_get_ago(github_id, m5_enemy_num), /_name)
 
 \TLV showdown(/_top, /_secret)
    /// Each team submits a file containing a TLV macro whose name is the GitHub ID matching the
-   /// repository and the submission (omitting unsupported characters, like '-'), as:
+   /// repository and the submission (omitting unsupported characters, like '-') and a team name as:
    /// var(github_id, xxx)
+   /// var(team_name, xxx)
    /// \TLV team_xxx()
    ///    ...
    
@@ -332,7 +333,7 @@
             init()
             {
                let background = this.newImageFromURL(
-                  "https://raw.githubusercontent.com/PigNeck/space-scuffle/main/back_grid_small.png",
+                  "https://raw.githubusercontent.com/rweda/showdown-2025-space-battle/a8e096c8901db15e33f809966a1754a8f3c7c3c3/back_grid_small.png",
                   "",
                   {  originX: "center", originY: "center",
                      left: 0, top: 0,
@@ -376,17 +377,19 @@
          /m5_SHIP_HIER
             $reset = /_top$reset;
             
-            // Inputs from team logic.
+            
+            // Inputs from opponent logic.
+            
             $ANY = /player$player_id ? /_secret/team1/ship$ANY : /_secret/team0/ship$ANY;
             `BOGUS_USE($dummy)  // Make sure this is pulled through the $ANY chain from /defaults to prevent empty $ANYs.
-            $test = -$xx_acc[2:0] > 4;
-            $test2 = -$xx_acc > 4'd4;
-            $test3 = -\$signed($xx_acc) > 4;
+            `BOGUS_USE($xx_a[3:0] $yy_a[3:0] $xx_acc[3:0] $yy_acc[3:0])  // A bug workaround to consume all bits for $ANY.
+            
             // Cap acceleration.
             $xx_a[3:0] = m5_cap($xx_acc, 3, m5_max_acceleration);
             $yy_a[3:0] = m5_cap($yy_acc, 3, m5_max_acceleration);
-            `BOGUS_USE($xx_acc[3:0] $yy_acc[3:0])
             
+            
+            // Process attempted actions, consuming energy for those that can be taken.
             
             // Recoup energy, capped by max.
             $recouped_energy[7:0] = >>1$energy + 8'd\m5_recoup_energy;
@@ -410,12 +413,14 @@
             
             $cloaked = $do_cloak;  // Just a rename.
             
-            // Is accessible, but not directly modifiable for participants (includes all the bullet logic) {
+            
+            // Update velocity and position, based on acceleration.
+            
+            // Cap velocity.
             $xx_vel[5:0] = $reset ? 6'b0 + m5_sign_extend($xx_a, 3, 2) : >>1$xx_v + m5_sign_extend($xx_a, 3, 2);
             $yy_vel[5:0] = $reset ? 6'b0 + m5_sign_extend($yy_a, 3, 2) : >>1$yy_v + m5_sign_extend($yy_a, 3, 2);
             $xx_v[5:0] = m5_cap($xx_vel, 5, m5_max_velocity);
             $yy_v[5:0] = m5_cap($yy_vel, 5, m5_max_velocity);
-            `BOGUS_USE($xx_a[3:0] $yy_a[3:0])   /// A bug workaround.
             
             $xx_p[7:0] = $reset ? m5_reset_x :
                          >>1$destroyed ? >>1$xx_p :
@@ -425,21 +430,21 @@
                          >>1$yy_p + m5_sign_extend($yy_v, 5, 2);
             
             
+            // Determine ship collisions.
             
+            // Bullet collisions with ships.
             /enemy_ship[m5_SHIP_RANGE]
                // Any bullet hit #enemy_ship.
                $hit = m5_repeat(m5_BULLET_CNT, ['/ship/bullet[m5_LoopCnt]/enemy_ship$hit || '])1'b0;
-            
-            
             // Is shot by any enemy ship
             $shot = m5_repeat(m5_SHIP_CNT, ['/player[! /player$player_id]/ship[m5_LoopCnt]/enemy_ship[#ship]$hit || '])1'b0;
-            // Destroyed from going out of bounds
+            
+            // Ship collisions with boarder.
             $out_of_bounds = $reset ? 1'b0 :
                    ($xx_p >= 8'd128 && $xx_p < (8'd192 + 8'd\m5_half_ship_width)) ||
                    ($xx_p < 8'd128 && $xx_p > (8'd64 - 8'd\m5_half_ship_width)) ||
                    ($yy_p >= 8'd128 && $yy_p < (8'd192 + 8'd\m5_half_ship_height)) ||
                    ($yy_p < 8'd128 && $yy_p > (8'd64 - 8'd\m5_half_ship_height));
-            //$hit = $shot || $out_of_bounds;
             $destroyed = $reset ? 1'b0 :
                     >>1$destroyed ? 1'b1 :
                     ($shot && !>>1$do_shield) ||
@@ -450,12 +455,25 @@
             
             // ||||||||||||||||  BULLET LOGIC ||||||||||||||||
             /m5_BULLET_HIER
+               // Identify firing bullets as a find-first, with each bullet propagating info to the next.
                $prev_found_fire = (#bullet == 0) ? 1'b0 : /bullet[#bullet - 1]$found_fire;  // An lower-indexed bullet fired.
-               $successful_fire = /ship$do_fire && ! >>1$bullet_exists && ! $prev_found_fire;
-               $found_fire = $prev_found_fire || $successful_fire;
+               $successful_fire = /ship$do_fire && ! >>1$bullet_exists && ! $prev_found_fire;  // This bullet fires.
+               $found_fire = $prev_found_fire || $successful_fire;  // This or a prior bullet fired.
                
+               $bullet_exists = /_top$reset ? 1'b0 :
+                                >>1$hit_an_enemy ? 1'b0 :
+                                (>>1$bullet_exists || $successful_fire) ?
+                                   // Hits border.
+                                   ($bullet_dir[0] == 1'b0) ?
+                                      (($bullet_x < (8'd64 + 8'd\m5_half_bullet_height)) || ($bullet_x > (8'd192 - 8'd\m5_half_bullet_height))) &&
+                                      (($bullet_y < (8'd64 + 8'd\m5_half_bullet_width)) || ($bullet_y > (8'd192 - 8'd\m5_half_bullet_width))) :
+                                   //else
+                                     (($bullet_y < (8'd64 + 8'd\m5_half_bullet_height)) || ($bullet_y > (8'd192 - 8'd\m5_half_bullet_height))) &&
+                                     (($bullet_x < (8'd64 + 8'd\m5_half_bullet_width)) || ($bullet_x > (8'd192 - 8'd\m5_half_bullet_width))) :
+                                1'b0;
+               
+               // Bullet state.
                $bullet_dir[1:0] = $successful_fire ? /ship$fire_dir : >>1$bullet_dir;
-               
                
                $bullet_x[7:0] = $successful_fire ?
                                    ($bullet_dir == 2'b00) ? (/ship$xx_p + 8'd\m5_half_ship_width + 8'd\m5_half_bullet_height) :
@@ -489,17 +507,6 @@
                $hit_an_enemy = | /enemy_ship[*]$hit;
                
                
-               $bullet_exists = /_top$reset ? 1'b0 :
-                                >>1$hit_an_enemy ? 1'b0 :
-                                (>>1$bullet_exists || $successful_fire) ?
-                                   ($bullet_dir[0] == 1'b0) ?
-                                      (($bullet_x < (8'd64 + 8'd\m5_half_bullet_height)) || ($bullet_x > (8'd192 - 8'd\m5_half_bullet_height))) &&
-                                      (($bullet_y < (8'd64 + 8'd\m5_half_bullet_width)) || ($bullet_y > (8'd192 - 8'd\m5_half_bullet_width))) :
-                                   //else
-                                     (($bullet_y < (8'd64 + 8'd\m5_half_bullet_height)) || ($bullet_y > (8'd192 - 8'd\m5_half_bullet_height))) &&
-                                     (($bullet_x < (8'd64 + 8'd\m5_half_bullet_width)) || ($bullet_x > (8'd192 - 8'd\m5_half_bullet_width))) :
-                                1'b0;
-               
                
                
                
@@ -517,7 +524,7 @@
                
                      // Load Bullet Image:
                      ret.bullet_img = this.newImageFromURL(
-                        (player_id ? "https://raw.githubusercontent.com/PigNeck/space-scuffle/main/bullet_sprites/p2/smol_bullet.png" : "https://raw.githubusercontent.com/PigNeck/space-scuffle/main/bullet_sprites/p1/smol_bullet.png"),
+                        (`https://raw.githubusercontent.com/rweda/showdown-2025-space-battle/a8e096c8901db15e33f809966a1754a8f3c7c3c3/bullet_sprites/p${player_id ? "2" : "1"}/smol_bullet.png`),
                         "",
                         {  left: 0, top: 0,
                            width: 3, height: 10,
@@ -623,7 +630,7 @@
                   // Load Ship Images.
                   for (let i = 0; i < 4; i++) {
                      ret[`ship_sprite${i}_img`] = this.newImageFromURL(
-                        `https://raw.githubusercontent.com/PigNeck/space-scuffle/main/ship_sprites/p${player_id ? "2" : "1"}/smol_ship${i}.png`,
+                        `https://raw.githubusercontent.com/rweda/showdown-2025-space-battle/a8e096c8901db15e33f809966a1754a8f3c7c3c3/ship_sprites/p${player_id ? "2" : "1"}/smol_ship${i}.png`,
                         "",
                         { left: 0, top: 0,
                            width: 11, height: 15,
@@ -637,7 +644,7 @@
             
                   // Load Shield Image:
                   ret.shield_img = this.newImageFromURL(
-                     "https://raw.githubusercontent.com/PigNeck/space-scuffle/main/shield.png",
+                     "https://raw.githubusercontent.com/rweda/showdown-2025-space-battle/a8e096c8901db15e33f809966a1754a8f3c7c3c3/shield.png",
                      "",
                      { left: 0, top: 0,
                         width: 23, height: 23,
@@ -668,7 +675,7 @@
                   // Load Explosion Images.
                   for (let i = 0; i < 5; i++) {
                      ret[`explody_sprite${i}`] = this.newImageFromURL(
-                        `https://raw.githubusercontent.com/PigNeck/space-scuffle/main/explosion_sprites/p${player_id ? "2" : "1"}/explody${i}.png`,
+                        `https://raw.githubusercontent.com/rweda/showdown-2025-space-battle/a8e096c8901db15e33f809966a1754a8f3c7c3c3/explosion_sprites/p${player_id ? "2" : "1"}/explody${i}.png`,
                         "",
                         { left: 0, top: 0,
                            width: 28, height: 28,
@@ -838,25 +845,27 @@
                   });
             
                   // Animate shield
+                  // Cycle of collision ends with an instant burst that is undone by the next animation.
+                  // Grow on enable cycle. Shrink next cycle.
                   this.obj.shield_img.set({
                      left: currentShipImage.left,
                      top: currentShipImage.top,
                      // Enlarge shield during animation.
-                     scaleX: was_do_shield ? (was_shot ? 1.2 : 1.0) : 0.0,
-                     scaleY: was_do_shield ? (was_shot ? 1.2 : 1.0) : 0.0,
+                     scaleX: was_do_shield ? 1.0 : 0.0,
+                     scaleY: was_do_shield ? 1.0 : 0.0,
                      visible: val_do_shield && ! val_destroyed
                   }).animate({
                      left: is_xx_p,
                      top: -is_yy_p,
-                     scaleX: is_do_shield ? (is_shot ? 1.2 : 1.0) : 0.0,
-                     scaleY: is_do_shield ? (is_shot ? 1.2 : 1.0) : 0.0,
+                     scaleX: is_do_shield ? 1.0 : 0.0,
+                     scaleY: is_do_shield ? 1.0 : 0.0,
                   }, {
                      duration: m5_default_anim_duration,
                      easing: fabric.util.ease.m5_default_anim_easing
                   }).thenSet({
                      visible: ! is_destroyed && is_do_shield,
-                     scaleX: 1.0,
-                     scaleY: 1.0,
+                     scaleX: is_shot ? 1.2 : 1.0,
+                     scaleY: is_shot ? 1.2 : 1.0,
                   })
 
                   // Animate explosion if applicable:
@@ -899,7 +908,7 @@
                // Load End Screens.
                const loadEndImg = (file) =>
                   this.newImageFromURL(
-                     `https://raw.githubusercontent.com/PigNeck/space-scuffle/main/end_screens/${file}`,
+                     `https://raw.githubusercontent.com/rweda/showdown-2025-space-battle/a8e096c8901db15e33f809966a1754a8f3c7c3c3/end_screens/${file}`,
                      "",
                      {  originX: "center",
                         left: 0, top: 0,
@@ -922,7 +931,7 @@
          
                // Load Picture Frame:
                ret.frame_img = this.newImageFromURL(
-                  "https://raw.githubusercontent.com/PigNeck/space-scuffle/main/gold_picture_frame.png",
+                  "https://raw.githubusercontent.com/rweda/showdown-2025-space-battle/a8e096c8901db15e33f809966a1754a8f3c7c3c3/gold_picture_frame.png",
                   "",
                   {  originX: "center", originY: "center",
                      left: 0, top: 0,

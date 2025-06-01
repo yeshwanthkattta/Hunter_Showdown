@@ -30,11 +30,12 @@
    / /ship[2:0]
    /    *clk:           Clock; used implicitly by TL-Verilog constructs, but you can use this in embedded Verilog.
    /    $reset:         Reset.
-   /    $xx_v[5:0], $yy_v: Velocity of your ships (use "\$signed($xx_v) for math).
+   /    $xx_v[5:0], $yy_v[5:0]: Velocity of your ships (use "\$signed($xx_v) for math).
    /    $energy[7:0]:   The energy supply of each ship, as updated by inputs last cycle.
    /    $destroyed:     Asserted if and when the ships are destroyed.
-   /    $enemy_x_p[7:0], $enemy_y_p[7:0]: Positions of enemy ships as updated by their control logic last cycle.
-   /    $enemy_cloaked: Whether the enemy ships are cloaked, based on enemy inputs last cycle; if asserted their enemy_x_p and enemy_y_p did not update.
+   / /prev_enemy_ship[2:0]: Reflecting enemy input in the previous cycle.
+   /    $xx_p[7:0], $yy_p[7:0]: Positions of enemy ships.
+   /    $cloaked: Whether the enemy ships are cloaked; if asserted enemy xx_p and xy_p did not update.
 
    / See also the game parameters in the header of `showdown_lib.tlv`.
 
@@ -57,7 +58,7 @@
 // When this file is included as a library (for competition), this code is ignored.
 \SV
    // Include the showdown framework.
-   m4_include_lib(https://raw.githubusercontent.com/PigNeck/space-scuffle/refs/heads/main/showdown_lib.tlv)
+   m4_include_lib(https://raw.githubusercontent.com/rweda/showdown-2025-space-battle/a8e096c8901db15e33f809966a1754a8f3c7c3c3/showdown_lib.tlv)
    
    m5_makerchip_module
 \TLV

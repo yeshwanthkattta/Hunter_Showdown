@@ -22,19 +22,19 @@
 
 \SV
    // Include the showdown framework.
-   m4_include_lib(https://raw.githubusercontent.com/PigNeck/space-scuffle/refs/heads/main/showdown_lib.tlv)
+   m4_include_lib(https://raw.githubusercontent.com/rweda/showdown-2025-space-battle/a8e096c8901db15e33f809966a1754a8f3c7c3c3/showdown_lib.tlv)
 
    module team_YOUR_GITHUB_ID (
       // Inputs:
       input logic clk, input logic reset,
-      input signed logic [m5_SHIP_RANGE][5:0] x_v, input signed logic [m5_SHIP_RANGE][7:0] y_v,   // Velocity of your ships.
+      input logic [m5_SHIP_RANGE][5:0] signed x_v, input logic [m5_SHIP_RANGE][7:0] signed y_v,   // Velocity of your ships.
       input logic [m5_SHIP_RANGE][7:0] energy,   // The energy supply of each ship.
       input logic [m5_SHIP_RANGE] destroyed,   // Asserted if and when the ships are destroyed.
-      input signed logic [m5_SHIP_RANGE][7:0] prev_enemy_x_p, input signed logic [m5_SHIP_RANGE][7:0] prev_enemy_y_p,   // Positions of enemy ships as updated by their control logic last cycle.
+      input logic [m5_SHIP_RANGE][7:0] signed prev_enemy_x_p, input logic [m5_SHIP_RANGE][7:0] signed prev_enemy_y_p,   // Positions of enemy ships as affected by their acceleration last cycle.
       input logic [m5_SHIP_RANGE] prev_enemy_cloaked,   // Whether the enemy ships are cloaked, in which case their prev_enemy_x_p and prev_enemy_y_p will not update.
       // Outputs:
-      output signed logic [m5_SHIP_RANGE][3:0] x_a, output signed logic [m5_SHIP_RANGE][3:0] y_a,  // Attempted acceleration for each of your ships; capped by max_acceleration (see showdown_lib.tlv).
-      output logic [m5_SHIP_RANGE] attempt_fire, output logic [m5_SHIP_RANGE] attempt_shield, [m5_SHIP_RANGE] attempt_cloak,  // Attempted actions for each of your ships.
+      output logic [m5_SHIP_RANGE][3:0] signed x_a, output logic [m5_SHIP_RANGE][3:0] signed y_a,  // Attempted acceleration for each of your ships; capped by max_acceleration (see showdown_lib.tlv).
+      output logic [m5_SHIP_RANGE] attempt_fire, output logic [m5_SHIP_RANGE] attempt_shield, output logic [m5_SHIP_RANGE] attempt_cloak,  // Attempted actions for each of your ships.
       output logic [m5_SHIP_RANGE][1:0] fire_dir   // Direction to fire (if firing). ( 0 = right, 1 = down, 2 = left, 3 = up)
    );
    
