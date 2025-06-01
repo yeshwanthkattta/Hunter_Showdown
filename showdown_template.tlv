@@ -19,20 +19,23 @@
    / Showdown details: https://www.redwoodeda.com/showdown-info and in the reposotory README.
    /
    /
-   / Your circuit should drive the following signals for each ship, in /ship[2:0]:
-   /   - $xx_acc[7:0]: ship's x-axis acceleration
-   /   - $yy_acc[7:0]: ship's y-axis acceleration
-   /   - $attempt_shield: activate ship's shield
-   /   - $attempt_fire: fire one of the ship's bullets
-   /   - $fire_dir: the direction in which the ship fires its bullet
-   / Based on the following inputs:
-   /   - $xx_acc[3:0]: Attempted acceleration for each of your ships (if sufficient energy)
-   /   - $yy_acc[3:0]:  "
-   /   - $attempt_fire: Attempt to fire (if sufficient energy remains)
-   /   - $fire_dir: Direction to fire (if firing). ( 0 = right, 1 = down, 2 = left, 3 = up)
-   /   - $attempt_cloak: Attempted actions for each of your ships (if sufficient energy remains)
-   /   - $attempt_shield: Attempt to use shields (if sufficient energy remains)
-   /
+   / Your circuit should drive the following signals for each of your ships, in /ship[2:0]:
+   / /ships[2:0]
+   /    $xx_acc[3:0], $yy_acc[3:0]: Attempted acceleration for each of your ships (if sufficient energy); capped by max_acceleration (see showdown_lib.tlv).
+   /    $attempt_fire: Attempt to fire (if sufficient energy remains).
+   /    $fire_dir: Direction to fire (if firing). ( 0 = right, 1 = down, 2 = left, 3 = up).
+   /    $attempt_cloak: Attempted actions for each of your ships (if sufficient energy remains).
+   /    $attempt_shield: Attempt to use shields (if sufficient energy remains).
+   / Based on the following inputs, previous state from the enemy in /prev_enemy_ship[2:0]:
+   / /ship[2:0]
+   /    *clk:           Clock; used implicitly by TL-Verilog constructs, but you can use this in embedded Verilog.
+   /    $reset:         Reset.
+   /    $xx_v[5:0], $yy_v: Velocity of your ships (use "\$signed($xx_v) for math).
+   /    $energy[7:0]:   The energy supply of each ship, as updated by inputs last cycle.
+   /    $destroyed:     Asserted if and when the ships are destroyed.
+   /    $enemy_x_p[7:0], $enemy_y_p[7:0]: Positions of enemy ships as updated by their control logic last cycle.
+   /    $enemy_cloaked: Whether the enemy ships are cloaked, based on enemy inputs last cycle; if asserted their enemy_x_p and enemy_y_p did not update.
+
    / See also the game parameters in the header of `showdown_lib.tlv`.
 
    use(m5-1.0)
@@ -60,7 +63,7 @@
 \TLV
    // Enlist teams for battle.
    
-   // Your team as Player 1. Provide:
+   // Your team as the first. Provide:
    //   - your GitHub ID, (as in your \TLV team_* macro, above)
    //   - your team name--anything you like (that isn't crude or disrespectful)
    m5_team(YOUR_GITHUB_ID, YOUR_TEAM_NAME)

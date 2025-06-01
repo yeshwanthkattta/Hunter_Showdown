@@ -133,9 +133,9 @@
          .y_v(/ship[*]$yy_v),
          .energy(/ship[*]>>1$energy),
          .destroyed(/ship[*]>>1$destroyed),
-         .prev_enemy_x_p(/prev_enemy_ship[*]>>1$xx_p),
-         .prev_enemy_y_p(/prev_enemy_ship[*]>>1$yy_p),
-         .prev_enemy_cloaked(/prev_enemy_ship[*]>>1$do_cloak),
+         .enemy_x_p(/prev_enemy_ship[*]$xx_p),
+         .enemy_y_p(/prev_enemy_ship[*]$yy_p),
+         .enemy_cloaked(/prev_enemy_ship[*]$cloaked),
          // Outputs:
          .x_a($$xx_acc_vect[4*m5_SHIP_CNT-1:0]),
          .y_a($$yy_acc_vect[4*m5_SHIP_CNT-1:0]),
@@ -282,7 +282,7 @@
       
       // Provide visibility to enemy ship state.
       /prev_enemy_ship[m5_SHIP_RANGE]
-         $cloaked = m5_enemy_ship>>1$do_cloak;
+         $cloaked = m5_enemy_ship>>1$cloaked;
          $xx_p[7:0] = $cloaked ? >>1$xx_p : -m5_enemy_ship>>1$xx_p;  // Negative to map coordinate systems.
          $yy_p[7:0] = $cloaked ? >>1$yy_p : -m5_enemy_ship>>1$yy_p;
          $destroyed = m5_enemy_ship>>1$destroyed;
@@ -334,8 +334,7 @@
                let background = this.newImageFromURL(
                   "https://raw.githubusercontent.com/PigNeck/space-scuffle/main/back_grid_small.png",
                   "",
-                  {
-                     originX: "center", originY: "center",
+                  {  originX: "center", originY: "center",
                      left: 0, top: 0,
                      width: 128, height: 128,
                      imageSmoothing: false,
@@ -408,6 +407,8 @@
             
             $energy[7:0] = $reset ? 8'd40 :
                $energy_after_shield;
+            
+            $cloaked = $do_cloak;  // Just a rename.
             
             // Is accessible, but not directly modifiable for participants (includes all the bullet logic) {
             $xx_vel[5:0] = $reset ? 6'b0 + m5_sign_extend($xx_a, 3, 2) : >>1$xx_v + m5_sign_extend($xx_a, 3, 2);
@@ -518,16 +519,22 @@
                      ret.bullet_img = this.newImageFromURL(
                         (player_id ? "https://raw.githubusercontent.com/PigNeck/space-scuffle/main/bullet_sprites/p2/smol_bullet.png" : "https://raw.githubusercontent.com/PigNeck/space-scuffle/main/bullet_sprites/p1/smol_bullet.png"),
                         "",
-                        { left: 0, top: 0,
+                        {  left: 0, top: 0,
                            width: 3, height: 10,
-                           imageSmoothing: false }
+                           imageSmoothing: false
+                        }
                      );
-                     ret.bullet_img.set({ originX: "center", originY: "center" });
+                     ret.bullet_img.set({
+                        originX: "center", originY: "center", visible: false,
+                     });
                
                
                      // Create Bullet Rect:
-                     ret.bullet_rect = new fabric.Rect({ width: 10, height: 2, strokeWidth: 0, fill: (player_id ? "#00ffb350" : "#ffff0050"), originX: "center", originY: "center" });
-                     ret.bullet_rect.set({ originX: "center", originY: "center" });
+                     ret.bullet_rect = new fabric.Rect({
+                        width: 10, height: 2, strokeWidth: 0,
+                        fill: (player_id ? "#00ffb350" : "#ffff0050"),
+                        originX: "center", originY: "center", visible: false,
+                     });
                
                      return ret;
                   },
@@ -605,9 +612,14 @@
                   const player_id = (this.getIndex("player") == 1);
                   const ship_id = this.getIndex();
             
-                  // Create Ship Rect:
-                  ret.ship_rect = new fabric.Rect({ width: 8, height: 8, strokeWidth: 0, fill: (player_id ? "#00ffb350" : "#ffff0050"), originX: "center", originY: "center" });
-                        
+                  // Create Ship Rect.
+                  ret.ship_rect = new fabric.Rect({
+                     width: 8, height: 8, strokeWidth: 0,
+                     fill: (player_id ? "#00ffb350" : "#ffff0050"),
+                     originX: "center", originY: "center",
+                     visible: false,
+                  });
+                  
                   // Load Ship Images.
                   for (let i = 0; i < 4; i++) {
                      ret[`ship_sprite${i}_img`] = this.newImageFromURL(
@@ -615,7 +627,7 @@
                         "",
                         { left: 0, top: 0,
                            width: 11, height: 15,
-                           imageSmoothing: false
+                           imageSmoothing: false,
                         }
                      );
                      ret[`ship_sprite${i}_img`].set({
@@ -630,17 +642,26 @@
                      { left: 0, top: 0,
                         width: 23, height: 23,
                         angle: player_id ? 180.0 : 0.0,
-                        imageSmoothing: false }
+                        imageSmoothing: false,
+                     }
                   );
-                  ret.shield_img.set({ originX: "center", originY: "center" });
+                  ret.shield_img.set({ originX: "center", originY: "center", visible: false });
             
             
                   // Create Shield Meter:
                   const energyColor = ship_id == 0 ? "#e8e800" :
                                       ship_id == 1 ? "#30e810" :
                                                      "#00d0d0";
-                  ret.energy_meter_back = new fabric.Rect({ width: 10, height: 1.5, strokeWidth: 0, fill: "#b0b0b0ff", originX: "left", originY: "center", angle: player_id ? 180.0 : 0.0 });
-                  ret.energy_meter = new fabric.Rect({ width: 10, height: 1.5, strokeWidth: 0, fill: energyColor, originX: "left", originY: "center", angle: player_id ? 180.0 : 0.0 });
+                  ret.energy_meter_back = new fabric.Rect({
+                     width: 10, height: 1.5, strokeWidth: 0, fill: "#b0b0b0ff",
+                     originX: "left", originY: "center", angle: player_id ? 180.0 : 0.0,
+                     visible: false,
+                  });
+                  ret.energy_meter = new fabric.Rect({
+                     width: 10, height: 1.5, strokeWidth: 0, fill: energyColor,
+                     originX: "left", originY: "center", angle: player_id ? 180.0 : 0.0,
+                     visible: false,
+                  });
             
             
             
@@ -880,7 +901,7 @@
                   this.newImageFromURL(
                      `https://raw.githubusercontent.com/PigNeck/space-scuffle/main/end_screens/${file}`,
                      "",
-                     { originX: "center",
+                     {  originX: "center",
                         left: 0, top: 0,
                         width: 108, height: 100,
                         imageSmoothing: false,
@@ -903,7 +924,7 @@
                ret.frame_img = this.newImageFromURL(
                   "https://raw.githubusercontent.com/PigNeck/space-scuffle/main/gold_picture_frame.png",
                   "",
-                  { originX: "center", originY: "center",
+                  {  originX: "center", originY: "center",
                      left: 0, top: 0,
                      width: 190, height: 190,
                      imageSmoothing: false
@@ -961,7 +982,7 @@
          // The "placard" showing team names.
          \viz_js
             box: { width: m5_placard_width, height: 19, left: 0,
-                   fill: "#dbc077", stroke: "#504020", strokeWidth: 1 },
+                   fill: "#ebd077", stroke: "#504020", strokeWidth: 1 },
             lib: {
                pixelFont: "Press Start 2P"
             },
@@ -995,7 +1016,7 @@
                   let playerLabel = (fill) => {
                      ret = new fabric.Text(
                                 `${p ? "m5_p1_text" : "m5_p0_text"}`,
-                                { left: 10, top: 0,
+                                { left: 10, top: 1,
                                   fontFamily: '/placard'.pixelFont, fontSize: "5", fontWeight: 400,
                                   originX: "left",
                                   fill: p ? "#197610" : "#a31a1a",
@@ -1007,7 +1028,7 @@
                      //shine: playerLabel("#ffefc0", 0.15),
                      label: playerLabel("#504020", 0),
                   };
-                  
+                  /**
                   ret.test =
                      new fabric.Rect({
                           left: ret.label.left,
@@ -1018,7 +1039,7 @@
                           originY: ret.label.originY,
                           fill: "rgba(255, 0, 0, 0.2)"
                      });
-                  /* */
+                  **/
                   return ret;
                },
                where: {left: -m5_calc(m5_placard_width / 2), top: 2.7,},
