@@ -218,9 +218,9 @@
       
       // Provide visibility to enemy ship state.
       /enemy_ship[m5_SHIP_RANGE]
-         $enemy_visible = m5_enemy_ship>>1$do_cloak || m5_enemy_ship>>1$destroyed;
-         $xx_p[7:0] = $enemy_visible ? >>2$xx_p : m5_enemy_ship>>1$xx_p;
-         $yy_p[7:0] = $enemy_visible ? >>1$yy_p : m5_enemy_ship$yy_p;
+         $cloaked = m5_enemy_ship>>1$do_cloak;
+         $xx_p[7:0] = $cloaked ? >>2$xx_p : -m5_enemy_ship>>1$xx_p;  // Negative to map coordinate systems.
+         $yy_p[7:0] = $cloaked ? >>1$yy_p : -m5_enemy_ship$yy_p;
          $destroyed = m5_enemy_ship>>1$destroyed;
          // The above do not have to be used.
          `BOGUS_USE($xx_p $yy_p $destroyed)
@@ -318,7 +318,7 @@
             `BOGUS_USE($dummy)  // Make sure this is pulled through the $ANY chain from /defaults to prevent empty $ANYs.
             
             // Recoup energy, capped by max.
-            $recouped_energy[7:0] = $Energy + 8'd\m5_recoup_energy;
+            $recouped_energy[7:0] = >>1$energy + 8'd\m5_recoup_energy;
             $maxed_energy[7:0] = ($recouped_energy > 8'd\m5_max_energy) ? 8'd\m5_max_energy : $recouped_energy;
             // Accelerate
             $no_more_bullets = & /bullet[*]$bullet_exists;
@@ -336,7 +336,6 @@
             
             $energy[7:0] = $reset ? 8'd40 :
                $energy_after_shield;
-            $Energy[7:0] <= $energy;
             
             // Is accessible, but not directly modifiable for participants (includes all the bullet logic) {
             $xx_v[5:0] = $reset ? 6'b0 + m5_sign_extend($xx_a, 3, 2) : >>1$xx_v + m5_sign_extend($xx_a, 3, 2);
@@ -441,7 +440,6 @@
                      const player_id = (this.getIndex("player") == 1);
                      ret = {};
                
-               
                      // Load Bullet Image:
                      ret.bullet_img = this.newImageFromURL(
                         (player_id ? "https://raw.githubusercontent.com/PigNeck/space-scuffle/main/bullet_sprites/p2/smol_bullet.png" : "https://raw.githubusercontent.com/PigNeck/space-scuffle/main/bullet_sprites/p1/smol_bullet.png"),
@@ -533,43 +531,20 @@
                   const player_id = (this.getIndex("player") == 1);
             
             
-                  // Load Ship Images:
-                  ret.ship_sprite0_img = this.newImageFromURL(
-                     (player_id ? "https://raw.githubusercontent.com/PigNeck/space-scuffle/main/ship_sprites/p2/smol_ship0.png" : "https://raw.githubusercontent.com/PigNeck/space-scuffle/main/ship_sprites/p1/smol_ship0.png"),
-                     "",
-                     { left: 0, top: 0,
-                        width: 11, height: 15,
-                        imageSmoothing: false }
-                  );
-                  ret.ship_sprite0_img.set({ originX: "center", originY: "center" });
-            
-                  ret.ship_sprite1_img = this.newImageFromURL(
-                     (player_id ? "https://raw.githubusercontent.com/PigNeck/space-scuffle/main/ship_sprites/p2/smol_ship1.png" : "https://raw.githubusercontent.com/PigNeck/space-scuffle/main/ship_sprites/p1/smol_ship1.png"),
-                     "",
-                     { left: 0, top: 0,
-                        width: 11, height: 15,
-                        imageSmoothing: false }
-                  );
-                  ret.ship_sprite1_img.set({ originX: "center", originY: "center" });
-            
-                  ret.ship_sprite2_img = this.newImageFromURL(
-                     (player_id ? "https://raw.githubusercontent.com/PigNeck/space-scuffle/main/ship_sprites/p2/smol_ship2.png" : "https://raw.githubusercontent.com/PigNeck/space-scuffle/main/ship_sprites/p1/smol_ship2.png"),
-                     "",
-                     { left: 0, top: 0,
-                        width: 11, height: 15,
-                        imageSmoothing: false }
-                  );
-                  ret.ship_sprite2_img.set({ originX: "center", originY: "center" });
-            
-                  ret.ship_sprite3_img = this.newImageFromURL(
-                     (player_id ? "https://raw.githubusercontent.com/PigNeck/space-scuffle/main/ship_sprites/p2/smol_ship3.png" : "https://raw.githubusercontent.com/PigNeck/space-scuffle/main/ship_sprites/p1/smol_ship3.png"),
-                     "",
-                     { left: 0, top: 0,
-                        width: 11, height: 15,
-                        imageSmoothing: false }
-                  );
-                  ret.ship_sprite3_img.set({ originX: "center", originY: "center" });
-            
+                  // Load Ship Images.
+                  for (let i = 0; i < 4; i++) {
+                     ret[`ship_sprite${i}_img`] = this.newImageFromURL(
+                        `https://raw.githubusercontent.com/PigNeck/space-scuffle/main/ship_sprites/p${player_id ? "2" : "1"}/smol_ship${i}.png`,
+                        "",
+                        { left: 0, top: 0,
+                           width: 11, height: 15,
+                           imageSmoothing: false
+                        }
+                     );
+                     ret[`ship_sprite${i}_img`].set({
+                          originX: "center", originY: "center"
+                     });
+                  }
             
                   // Load Shield Image:
                   ret.shield_img = this.newImageFromURL(
@@ -588,76 +563,27 @@
                   ret.shield_meter = new fabric.Rect({ width: 10, height: 1.5, strokeWidth: 0, fill: "#17f7ffff", originX: "left", originY: "center", angle: player_id ? 180.0 : 0.0 });
             
             
-            
-            
                   // Create Ship Rect:
                   ret.ship_rect = new fabric.Rect({ width: 8, height: 8, strokeWidth: 0, fill: (player_id ? "#00ffb350" : "#ffff0050"), originX: "center", originY: "center" });
             
             
-            
-            
-                  // Load Explosion Images:
-                  ret.explody_sprite0 = this.newImageFromURL(
-                     player_id ? "https://raw.githubusercontent.com/PigNeck/space-scuffle/main/explosion_sprites/p2/explody0.png" : "https://raw.githubusercontent.com/PigNeck/space-scuffle/main/explosion_sprites/p1/explody0.png",
-                     "",
-                     { left: 0, top: 0,
-                        width: 28, height: 28,
-                        imageSmoothing: false,
-            
-                        // Adjust angle so that even when the ships flip, the explosion still faces the same direction.
-                        angle: player_id ? 180 : 0 }
-                  );
-                  ret.explody_sprite0.set({ originX: "center", originY: "center", visible: false });
-            
-                  ret.explody_sprite1 = this.newImageFromURL(
-                     player_id ? "https://raw.githubusercontent.com/PigNeck/space-scuffle/main/explosion_sprites/p2/explody1.png" : "https://raw.githubusercontent.com/PigNeck/space-scuffle/main/explosion_sprites/p1/explody1.png",
-                     "",
-                     { left: 0, top: 0,
-                        width: 28, height: 28,
-                        imageSmoothing: false,
-            
-                        // Adjust angle so that even when the ships flip, the explosion still faces the same direction.
-                        angle: player_id ? 180 : 0 }
-                  );
-                  ret.explody_sprite1.set({ originX: "center", originY: "center", visible: false });
-            
-                  ret.explody_sprite2 = this.newImageFromURL(
-                     player_id ? "https://raw.githubusercontent.com/PigNeck/space-scuffle/main/explosion_sprites/p2/explody2.png" : "https://raw.githubusercontent.com/PigNeck/space-scuffle/main/explosion_sprites/p1/explody2.png",
-                     "",
-                     {
-                        left: 0, top: 0,
-                        width: 28, height: 28,
-                        imageSmoothing: false,
-            
-                        // Adjust angle so that even when the ships flip, the explosion still faces the same direction.
-                        angle: player_id ? 180 : 0 }
-                  );
-                  ret.explody_sprite2.set({ originX: "center", originY: "center", visible: false });
-            
-                  ret.explody_sprite3 = this.newImageFromURL(
-                     player_id ? "https://raw.githubusercontent.com/PigNeck/space-scuffle/main/explosion_sprites/p2/explody3.png" : "https://raw.githubusercontent.com/PigNeck/space-scuffle/main/explosion_sprites/p1/explody3.png",
-                     "",
-                     { left: 0, top: 0,
-                        width: 28, height: 28,
-                        imageSmoothing: false,
-            
-                        // Adjust angle so that even when the ships flip, the explosion still faces the same direction.
-                        angle: player_id ? 180 : 0 }
-                  );
-                  ret.explody_sprite3.set({ originX: "center", originY: "center", visible: false });
-            
-                  ret.explody_sprite4 = this.newImageFromURL(
-                     player_id ? "https://raw.githubusercontent.com/PigNeck/space-scuffle/main/explosion_sprites/p2/explody4.png" : "https://raw.githubusercontent.com/PigNeck/space-scuffle/main/explosion_sprites/p1/explody4.png",
-                     "",
-                     { left: 0, top: 0,
-                        width: 28, height: 28,
-                        imageSmoothing: false,
-            
-                        // Adjust angle so that even when the ships flip, the explosion still faces the same direction.
-                        angle: player_id ? 180 : 0 }
-                  );
-                  ret.explody_sprite4.set({ originX: "center", originY: "center", visible: false });
-            
+                  // Load Explosion Images.
+                  for (let i = 0; i < 5; i++) {
+                     ret[`explody_sprite${i}`] = this.newImageFromURL(
+                        `https://raw.githubusercontent.com/PigNeck/space-scuffle/main/explosion_sprites/p${player_id ? "2" : "1"}/explody${i}.png`,
+                        "",
+                        { left: 0, top: 0,
+                           width: 28, height: 28,
+                           imageSmoothing: false,
+                           // Adjust angle so that even when the ships flip, the explosion still faces the same direction.
+                           angle: player_id ? 180 : 0
+                        }
+                     );
+                     ret[`explody_sprite${i}`].set({
+                          originX: "center", originY: "center", visible: false
+                     });
+                  }
+                  
                   return ret;
                },
             
@@ -676,48 +602,6 @@
                      return val;
                   }
             
-                  let pseudo_this = this;
-                  function setExplosionFrame(frame_num) {
-                     pseudo_this.obj.explody_sprite0.set({visible: frame_num == 0});
-                     pseudo_this.obj.explody_sprite1.set({visible: frame_num == 1});
-                     pseudo_this.obj.explody_sprite2.set({visible: frame_num == 2});
-                     pseudo_this.obj.explody_sprite3.set({visible: frame_num == 3});
-                     pseudo_this.obj.explody_sprite4.set({visible: frame_num == 4});
-                  }
-            
-            
-                  // Select Current Ship Image:
-                  let current_ship_img;
-                  let accel_mag = ((asSigned('$xx_a'.asInt(), 4) ** 2) + (asSigned('$yy_a'.asInt(), 4) ** 2)) ** 0.5;
-                  if (accel_mag == 0)
-                  {
-                     current_ship_img = this.obj.ship_sprite0_img;
-                     this.obj.ship_sprite1_img.set({ visible: false });
-                     this.obj.ship_sprite2_img.set({ visible: false });
-                     this.obj.ship_sprite3_img.set({ visible: false });
-                  }
-                  else if (accel_mag < 1.75)
-                  {
-                     current_ship_img = this.obj.ship_sprite1_img;
-                     this.obj.ship_sprite0_img.set({ visible: false });
-                     this.obj.ship_sprite2_img.set({ visible: false });
-                     this.obj.ship_sprite3_img.set({ visible: false });
-                  }
-                  else if (accel_mag < 5)
-                  {
-                     current_ship_img = this.obj.ship_sprite2_img;
-                     this.obj.ship_sprite0_img.set({ visible: false });
-                     this.obj.ship_sprite1_img.set({ visible: false });
-                     this.obj.ship_sprite3_img.set({ visible: false });
-                  }
-                  else
-                  {
-                     current_ship_img = this.obj.ship_sprite3_img;
-                     this.obj.ship_sprite0_img.set({ visible: false });
-                     this.obj.ship_sprite1_img.set({ visible: false });
-                     this.obj.ship_sprite2_img.set({ visible: false });
-                  }
-                  const next_ship_img = current_ship_img;  // TODO: FIX
             
                   m5_prep_animation()
                   m5_sig(xx_p, SignedInt, anim)
@@ -726,16 +610,12 @@
                   m5_sig(yy_a, SignedInt, both)
                   m5_sig(do_cloak, Bool, anim)
                   m5_sig(destroyed, Bool, anim, >>1)
-                  m5_sig(Energy, Int, anim)
+                  m5_sig(energy, Int, anim)
                   m5_sig(do_shield, Bool, anim)
                   m5_sig(shot, Bool, set)
             
                   const energy_meter_x_offset = player_id ? 5 : -5;
                   const energy_meter_y_offset = player_id ? -9 : 9;
-            
-                  const energy_last_meter = '>>1$Energy'.asInt();
-                  const energy_meter = '$Energy'.asInt();
-                  const energy_next_meter = '$Energy'.step().asInt();
             
             
                   // Determine the correct starting and ending angles for the ship for this cycle
@@ -760,8 +640,27 @@
                   const toOpacity = (cloak) => cloak ? 0.25 : 1;
                   const visible = ! val_destroyed;
             
+                  // Select Current Ship Image.
+                  // Default to invisible.
+                  for (let i = 0; i < 4; i++) {
+                     this.obj[`ship_sprite${i}_img`].set({ visible: false });
+                  }
+                  debugger;
+                  const accelToImage = (x_a, y_a) => {
+                     const accelMagSq = toMagSq(x_a, y_a);
+                     const shipImgNum =
+                            (accelMagSq == 0)        ? 0 :
+                            (accelMagSq < 1.75 ** 2) ? 1 :
+                            (accelMagSq < 5 ** 2)    ? 2 :
+                                                       3;
+                     return this.obj[`ship_sprite${shipImgNum}_img`];
+                  };
+                  // We set and hold a ship image matching the cycle's acceleration, then set to reflect the previous cycle.
+                  // We animate ship angle to the next-cycle acceleration. 
+                  const currentShipImage = accelToImage(val_xx_a, val_yy_a);
+            
                   // Animate ship image
-                  current_ship_img.set({
+                  currentShipImage.set({
                      left: was_xx_p,
                      top: -was_yy_p,
                      angle: set_angle,
@@ -775,21 +674,21 @@
                   }, {
                      duration: m5_default_anim_duration,
                      easing: fabric.util.ease.m5_default_anim_easing
-                     }
-                  ).then(() => {
+                  })/**.then(() => {
                      // Switch to ship reflecting current acceleration.
-                     current_ship_img.set({visibility: false});
-                     next_ship_img.set({
+                     currentShipImage.set({visibility: false});
+                     nextShipImg.set({
                         visibility: !is_destroyed,
                         opacity: toOpacity(is_do_cloak)
                      });
-                  });
-
+                  })**/
+                  ;
+                  
                   // Animate ship hit box similarly, but no angle or opacity
                   this.obj.ship_rect.set({
-                     left: current_ship_img.left,
-                     top: current_ship_img.top,
-                     visible: current_ship_img.visible
+                     left: currentShipImage.left,
+                     top: currentShipImage.top,
+                     visible: currentShipImage.visible
                   }).animate({
                      left: is_xx_p,
                      top: -is_yy_p,
@@ -802,9 +701,9 @@
 
                   // Animate shield meter
                   this.obj.shield_meter_back.set({
-                     left: current_ship_img.left + energy_meter_x_offset,
-                     top: current_ship_img.top + energy_meter_y_offset,
-                     visible: current_ship_img.visible
+                     left: currentShipImage.left + energy_meter_x_offset,
+                     top: currentShipImage.top + energy_meter_y_offset,
+                     visible: currentShipImage.visible
                   }).animate({
                      left: is_xx_p + energy_meter_x_offset,
                      top: -is_yy_p + energy_meter_y_offset,
@@ -815,15 +714,15 @@
                      visible: !is_destroyed
                   });
                   this.obj.shield_meter.set({
-                     left: current_ship_img.left + energy_meter_x_offset,
-                     top: current_ship_img.top + energy_meter_y_offset,
-                     scaleX: energy_last_meter / m5_max_energy,
+                     left: currentShipImage.left + energy_meter_x_offset,
+                     top: currentShipImage.top + energy_meter_y_offset,
+                     scaleX: was_energy / m5_max_energy,
                      fill: "#12e32e",
-                     visible: current_ship_img.visible
+                     visible: currentShipImage.visible
                   }).animate({
                      left: is_xx_p + energy_meter_x_offset,
                      top: -is_yy_p + energy_meter_y_offset,
-                     scaleX: energy_meter / m5_max_energy,
+                     scaleX: is_energy / m5_max_energy,
                   }, {
                      duration: m5_default_anim_duration,
                      easing: fabric.util.ease.m5_default_anim_easing
@@ -833,8 +732,8 @@
             
                   // Animate shield
                   this.obj.shield_img.set({
-                     left: current_ship_img.left,
-                     top: current_ship_img.top,
+                     left: currentShipImage.left,
+                     top: currentShipImage.top,
                      // Enlarge shield during animation.
                      scaleX: was_do_shield ? (was_shot ? 1.2 : 1.0) : 0.0,
                      scaleY: was_do_shield ? (was_shot ? 1.2 : 1.0) : 0.0,
