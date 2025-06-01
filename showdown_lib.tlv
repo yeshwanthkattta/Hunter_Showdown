@@ -158,6 +158,61 @@
 // Team logic providing testing behavior.
 \TLV team_test1(/_top)
    /ship[*]
+      $offense = >>1$energy >= 8'd20;
+      
+      /distances[2:0]
+         $xx[7:0] = /enemy_ship[#distances]>>1$xx_p - /ship>>1$xx_p;
+         $abs_xx[7:0] = ($xx[7] == 1'b1) ?
+                           (- $xx) :
+                        $xx;
+         $yy[7:0] = /enemy_ship[#distances]>>1$yy_p - /ship>>1$yy_p;
+         $abs_yy[7:0] = ($yy[7] == 1'b1) ?
+                           (- $yy) :
+                        $yy;
+         
+         $sum[7:0] = $abs_xx + $abs_yy;
+      
+      $target[1:0] = ((/distances[0]$sum <= /distances[1]$sum) && (/distances[0]$sum <= /distances[2]$sum)) ? 2'b00 :
+                                (/distances[1]$sum <= /distances[2]) ? 2'b01 :
+                                2'b10;
+      
+      $target_ship_xx = /enemy_ship[$target]>>1$xx_p;
+      $target_ship_yy = /enemy_ship[$target]>>1$yy_p;
+      
+      $xx_target_speed[5:0] = (/distances[$target]$abs_xx >= 8'd12) ? 6'd7 :
+                               (/distances[$target]$abs_xx >= 8'd9) ? 6'd6 :
+                               (/distances[$target]$abs_xx >= 8'd7) ? 6'd5 :
+                               (/distances[$target]$abs_xx >= 8'd5) ? 6'd4 :
+                               /distances[$target]$abs_xx;
+      $yy_target_speed[5:0] = (/distances[$target]$abs_yy >= 8'd12) ? 6'd7 :
+                               (/distances[$target]$abs_yy >= 8'd9) ? 6'd6 :
+                               (/distances[$target]$abs_yy >= 8'd7) ? 6'd5 :
+                               (/distances[$target]$abs_yy >= 8'd5) ? 6'd4 :
+                               /distances[$target]$abs_yy;
+      
+      $xx_target_velocity[5:0] = (/distances[$target]$xx[7] == 1'b1) ? (- $xx_target_speed) :
+                                 $xx_target_speed;
+      $yy_target_velocity[5:0] = (/distances[$target]$yy[7] == 1'b1) ? (- $yy_target_speed) :
+                                 $yy_target_speed;
+      
+      $xx_target_acceleration[5:0] = $xx_target_velocity - >>1$xx_v;
+      $abs_xx_target_acceleration[5:0] = ($xx_target_acceleration[5] == 1'b1) ?
+                                      (- $xx_target_acceleration) :
+                                   $xx_target_acceleration;
+      $yy_target_acceleration[5:0] = $yy_target_velocity - >>1$yy_v;
+      $abs_yy_target_acceleration[5:0] = ($yy_target_acceleration[5] == 1'b1) ?
+                                      (- $yy_target_acceleration) :
+                                   $yy_target_acceleration;
+      
+      $abs_xx_a[3:0] = ($abs_xx_target_acceleration >= 6'd3) ? 4'd3 :
+                       $abs_xx_target_acceleration;
+      
+      $xx_a[3:0] = ($xx_target_acceleration[5] == 1'b1) ? (- $abs_xx_a) : $abs_xx_a;
+      $yy_a[3:0] = ($yy_target_acceleration[5] == 1'b1) ? (- $abs_yy_a) : $abs_yy_a;
+      
+      
+      
+      /*
       $fire_counter[1:0] = >>1$reset ? 2'b0 :
                            (>>1$fire_counter + 2'b1);
       $ability_counter[3:0] = >>1$reset ? 4'b0 :
@@ -180,6 +235,7 @@
       $attempt_shield = ($ability_counter >= 4'b101) && ($ability_counter < 4'b1000);
       
       $attempt_cloak = ($ability_counter >= 4'b1101);
+      */
 
 // Team logic that uses default values (and thus, the ships do absolutely nothing).
 \TLV team_sitting_duck(/_top)
