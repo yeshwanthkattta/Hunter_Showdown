@@ -6,6 +6,8 @@ This repository is all you need to compete in the 1st Annual Makerchip ASIC Desi
 
 In each match, your fleet of three ships battles another. You design the control circuitry for your autonomous spacecraft to outmaneuver and outwit your opponents'.
 
+![Watch video](screencapture.gif)
+
 ## Rules of Combat
 
 Your three ships can:
@@ -36,7 +38,9 @@ You'll construct your control logic in a copy of either:
 - `showdown_template.tlv` (to code your logic in TL-Verilog) or
 - `showdown_verilog_template.tlv` (to code your logic in Verilog)
 
-Comments in those files provide interface signal details.
+Comments in those files provide interface signal details. All you need is the one file in GitHub for submission. We suggest, using the green "Use this template" button from [this repository](https://github.com/rweda/showdown-2025-space-battle). Clone your new Showdown repository for local editing. Copy a template file into a new `.tlv` file in this repo for you work. (Alternatively, you could fork the repo and edit directly in the template file so you can pull future changes.)
+
+Edit your local file in Makerchip (supported by Chrome and Edge) with auto-save. Or edit in your favorite editor, and compile in Makerchip by using "Project" > "Connect File".
 
 ## Should I use TL-Verilog or Verilog?
 
