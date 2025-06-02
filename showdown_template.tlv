@@ -21,20 +21,21 @@
    /
    / Your circuit should drive the following signals for each of your ships, in /ship[2:0]:
    / /ships[2:0]
-   /    $xx_acc[3:0], $yy_acc[3:0]: Attempted acceleration for each of your ships (if sufficient energy); capped by max_acceleration (see showdown_lib.tlv).
+   /    $xx_acc[3:0], $yy_acc[3:0]: Attempted acceleration for each of your ships (if sufficient energy);
+                                    capped by max_acceleration (see showdown_lib.tlv). (use "\$signed($yy_acc) for signed math)
    /    $attempt_fire: Attempt to fire (if sufficient energy remains).
-   /    $fire_dir: Direction to fire (if firing). ( 0 = right, 1 = down, 2 = left, 3 = up).
+   /    $fire_dir: Direction to fire (if firing). (For the first player: 0 = right, 1 = down, 2 = left, 3 = up).
    /    $attempt_cloak: Attempted actions for each of your ships (if sufficient energy remains).
    /    $attempt_shield: Attempt to use shields (if sufficient energy remains).
    / Based on the following inputs, previous state from the enemy in /prev_enemy_ship[2:0]:
    / /ship[2:0]
    /    *clk:           Clock; used implicitly by TL-Verilog constructs, but you can use this in embedded Verilog.
    /    $reset:         Reset.
-   /    $xx_p[7:0], $yy_p[7:0]: Position of your ships as affected by previous cycle's acceleration (use "\$signed($xx_p) for math).
+   /    $xx_p[7:0], $yy_p[7:0]: Position of your ships as affected by previous cycle's acceleration. (signed value, unsigned type)
    /    $energy[7:0]:   The energy supply of each ship, as updated by inputs last cycle.
    /    $destroyed:     Asserted if and when the ships are destroyed.
    / /prev_enemy_ship[2:0]: Reflecting enemy input in the previous cycle.
-   /    $xx_p[7:0], $yy_p[7:0]: Positions of enemy ships.
+   /    $xx_p[7:0], $yy_p[7:0]: Positions of enemy ships. (signed value, unsigned type)
    /    $cloaked: Whether the enemy ships are cloaked; if asserted enemy xx_p and xy_p did not update.
 
    / See also the game parameters in the header of `showdown_lib.tlv`.
@@ -58,7 +59,7 @@
 // When this file is included as a library (for competition), this code is ignored.
 \SV
    // Include the showdown framework.
-   m4_include_lib(https://raw.githubusercontent.com/rweda/showdown-2025-space-battle/a8e096c8901db15e33f809966a1754a8f3c7c3c3/showdown_lib.tlv)
+   m4_include_lib(https://raw.githubusercontent.com/rweda/showdown-2025-space-battle/c614525c206316d635acd98dbe878c10e7134464/showdown_lib.tlv)
    
    m5_makerchip_module
 \TLV

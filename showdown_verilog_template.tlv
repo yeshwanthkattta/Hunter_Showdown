@@ -22,7 +22,7 @@
 
 \SV
    // Include the showdown framework.
-   m4_include_lib(https://raw.githubusercontent.com/rweda/showdown-2025-space-battle/a8e096c8901db15e33f809966a1754a8f3c7c3c3/showdown_lib.tlv)
+   m4_include_lib(https://raw.githubusercontent.com/rweda/showdown-2025-space-battle/c614525c206316d635acd98dbe878c10e7134464/showdown_lib.tlv)
 
    module team_YOUR_GITHUB_ID (
       // Inputs:
@@ -35,14 +35,14 @@
       // Outputs:
       output logic signed [3:0] x_a [m5_SHIP_RANGE], output logic signed [3:0] y_a [m5_SHIP_RANGE],  // Attempted acceleration for each of your ships; capped by max_acceleration (see showdown_lib.tlv).
       output logic [m5_SHIP_RANGE] attempt_fire, output logic [m5_SHIP_RANGE] attempt_shield, output logic [m5_SHIP_RANGE] attempt_cloak,  // Attempted actions for each of your ships.
-      output logic [1:0] fire_dir [m5_SHIP_RANGE]   // Direction to fire (if firing). ( 0 = right, 1 = down, 2 = left, 3 = up)
+      output logic [1:0] fire_dir [m5_SHIP_RANGE]   // Direction to fire (if firing). (For the first player: 0 = right, 1 = down, 2 = left, 3 = up)
    );
    
    // Parameters defining the valid ranges of input/output values can be found near the top of "showdown_lib.tlv".
    
-   // /------------------------------\
-   // | Your Verilog logic goes here |
-   // \------------------------------/
+      // /------------------------------\
+      // | Your Verilog logic goes here |
+      // \------------------------------/
    
    endmodule
 

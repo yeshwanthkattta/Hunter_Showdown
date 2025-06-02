@@ -2,7 +2,7 @@
 
 # Overview
 
-This repository is all you need to compete in the 1st Annual Makerchip ASIC Design Showdown. For Showdown details, see https://www.redwoodeda.com/showdown-info. Participants must monitor the #showdown channel in the [TL-Verilog User's Slack workspace](https://join.slack.com/t/tl-verilog-users/shared_invite/zt-4fatipnr-dmDgkbzrCe0ZRLOOVm89gA) for program updates.
+This repository is all you need to compete in the 1st Annual Makerchip ASIC Design Showdown. For Showdown details, see https://www.redwoodeda.com/showdown-info. Participants must monitor the `#showdown` channel in the [TL-Verilog User's Slack workspace](https://join.slack.com/t/tl-verilog-users/shared_invite/zt-4fatipnr-dmDgkbzrCe0ZRLOOVm89gA) for program updates.
 
 In each match, your fleet of three ships battles another. You design the control circuitry for your autonomous spacecraft to outmaneuver and outwit your opponents'.
 
@@ -21,7 +21,7 @@ Your ships are able to monitor the positions of the other ships (unless cloaked)
 
 Ships are destroyed when they are shot or when their hit box exits the play area.
 
-Control circuits have inputs characterizing the visible the state of the system, and they provide outputs that affect this state on the next cycle. Acceleration is applied as an instantaneous burst that immediately affects velocity, which affects the position on the next cycle. The VIZ tab on a given cycle reflects the state as update by the inputs on that cycle.
+Control circuits have inputs characterizing the visible state of the system, and they provide outputs that affect this state on the next cycle. Acceleration is applied as an instantaneous burst that immediately affects velocity, which affects the position on the next cycle. The VIZ tab on a given cycle reflects the state as updated by the inputs on that cycle.
 
 The coordinate system is flipped 180 degrees between the opponents, around (0, 0) in the center, so the starting ship coordinates are the same for both opponents. The X dimension increases to the right, and the Y dimension increases upward.
 
@@ -53,26 +53,24 @@ On the other hand, TL-Verilog offers:
 - *Easier:* You can become comfortable with it in a week. Especially, if you don't already know Verilog, it can be easier to get going with TL-Verilog. Even if you know Verilog already, you'll probably make up for your one-week investment by the time you are finished coding.
 - *Advanced Skills:* Use this contest as an opportunity to learn something new and amp up your game.
 - *Differentiation:* While mainstream employers look for Verilog designers, employers who are on the forefront of technology value advance skills with differentiated technology. Learning TL-Verilog could help you reach these employers and differentiate yourself from the masses.
-- *Community:* This contest is associated with the TL-Verilog community. In the #showdown Slack channel in the [TL-Verilog User's Slack workspace](https://join.slack.com/t/tl-verilog-users/shared_invite/zt-4fatipnr-dmDgkbzrCe0ZRLOOVm89gA) you'll find a supportive community around TL-Verilog.
+- *Community:* This contest is associated with the TL-Verilog community. In the `#showdown` Slack channel in the [TL-Verilog User's Slack workspace](https://join.slack.com/t/tl-verilog-users/shared_invite/zt-4fatipnr-dmDgkbzrCe0ZRLOOVm89gA) you'll find a supportive community around TL-Verilog.
 - *IDE Features:* This contest uses the Makerchip IDE, which is custom built to support TL-Verilog. Features like the DIAGRAM view and interactive features apply only to TL-Verilog.
 - *Compatibility:* If you are on the fence, start with the TL-Verilog template and try using TL-Verilog. It is an extension of Verilog. If you have trouble, you can always write a pure Verilog component (module, macro, function, etc.) and instantiate it from your TL-Verilog code.
-
-If you are coding (System)Verilog, you can find plenty of resources online. If you are learning TL-Verilog for the first time, you'll find
-resources to get you started under Makerchip's "Learn" menu.
 
 ## Tips
 
 ### TL-Verilog
 
-In the WAVEFORM viewer and DIAGRAM, using the template, your signals will appear under `TLV/secret/team0` or `/secret/team1`. Other signals will not be accessible to you. Though in the template, you can access them through `/secret`, for final competition, `/secret` will be renamed. Your design will not compile for competition if you attempt to access `/secret` signals.
+In the WAVEFORM viewer and DIAGRAM, using the template, your signals will appear under `TLV/secret/team0` or `/secret/team1`. You'll also see signals from the Showdown framework, but your logic must not access them. They will be renamed for the final competition to ensure compliance. Non-compliant submissions will be disqualified.
 
 Spend the time to learn TL-Verilog first, if you are not already familiar. There are learning resources in the Makerchip IDE. For this competition, you can build reasonable circuits as combinational logic, so pipelines, sequential logic, "alignment", and states are likely unimportant. Hierarchy will be useful to learn. Other tutorial topics, validity, TLV macros, and transaction flow, though they may be used heavily by the Showdown library and template, are less important for your logic.
 
-If you don't know Verilog syntax, TL-Verilog uses Verilog `assign` expression syntax, so you learn this as well.
+If you don't know Verilog syntax, TL-Verilog uses Verilog expression (`assign`) syntax, so you should learn this as well.
 
-To treat TL-Verilog signals (pipesignals) as signed, use `\$signed($my_sig)`.
+Some specific notes:
 
-Ternary expressions are king in TL-Verilog. Make sure you understand how to use and format them cleanly. Use them to customize behavior based on `#ship` among other uses.
+- To treat TL-Verilog signals (pipesignals) as signed, use `\$signed($my_sig)`.
+- Ternary expressions are king in TL-Verilog. Make sure you understand how to use and format them cleanly. Use them to customize behavior based on `#ship` among other uses.
 
 ### Verilog
 
@@ -96,8 +94,8 @@ Seek help in Slack. Help others. A bit of competition can add to the fun, but th
 
 ## Competition Rules
 
-Details of the competition structure will be determined close to the competition date, depending upon participation. Makerchip is the judge and jury for battles. The winner of each battle is the player/team who destroys all enemy ships or has the most ships remaining at (roughly) Makerchip's cycle limit of ~600 cycles.
+The Makerchip platform is the judge and jury for battles. The winner of each battle is the player/team who destroys all enemy ships or has the most ships remaining at (roughly) Makerchip's cycle limit of ~600 cycles. Submissions that fail to compile and simulate within Makerchip's timeout will not be able to compete. Battles that fail to compile/simulate will be deemed a tie or awarded to the team that was not responsible for the failure. Details of the tournament structure will be determined close to the competition date, depending upon participation.
 
-Your submission must be based on the latest Verilog or TL-Verilog template. Bug fixes in the templates and Showdown library may be required during the coding period.
+Your submission must be based on the latest Verilog or TL-Verilog template and must not reference signals outside of your control circuit and its inputs/outputs. Bug fixes in the templates and Showdown library may be required during the coding period. Rule changes will not be introduced lightly, but may be deemed necessary to facilitate the best experience and would be communicated in Slack. Be sure you are receiving Slack notifications.
 
-Inconsiderate behavior will not be tolerated and may result in disqualification. In the event of disputes, ambiguity, library/template bugs affecting outcomes, disqualification, etc., Redwood EDA, LLC's decisions are final and may result in lose of prize money. Details can be found in the [Showdown Terms and Conditions](https://www.redwoodeda.com/showdown-terms).
+Inconsiderate behavior will not be tolerated and may result in disqualification. In the event of disputes, ambiguity, library/template bugs affecting outcomes, disqualification, etc., Redwood EDA, LLC's decisions are final and may result in loss of prize money. Details can be found in the [Showdown Terms and Conditions](https://www.redwoodeda.com/showdown-terms).
