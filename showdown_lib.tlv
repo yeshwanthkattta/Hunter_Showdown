@@ -41,6 +41,25 @@
    
    / ++++++++++ End of Contest Parameters ++++++++++++
    
+   / VIZ config
+   / viz_mode can be set before including this library.
+   /   devel: [default] for development
+   /   demo: optimized for demonstration
+   if_ndef(viz_mode, [
+      var(viz_mode, devel)
+   ])
+   case(viz_mode, devel, [
+      var(show_hit_boxes, true)
+      var(default_anim_duration, 250)
+      var(early_turns, 0)
+      var(trail_length, 3)
+   ], [
+      / demo mode
+      var(show_hit_boxes, false)
+      var(default_anim_duration, 1000)
+      var(early_turns, 1)
+      var(trail_length, 0)
+   ])
    
    / Computed parameters.
    var(half_bullet_width, m5_calc(m5_bullet_width / 2))
@@ -48,7 +67,6 @@
    var(half_ship_width, m5_calc(m5_ship_width / 2))
    var(half_ship_height, m5_calc(m5_ship_height / 2))
    
-   var(default_anim_duration, 1000)
    var(default_anim_easing, ['(t, b, c, d) => b + (t/d) * c'])  /// e.g. easeOutCubic or linear
    
    
@@ -117,12 +135,12 @@
       ~(['const forward = this.steppedBy() >= 0; const step = forward ? -1 : 1; const animCyc = forward ? 0 : 1;   // Characterize animation.'])
    })
 
-   
+   macro(ApplyVal, ['this.applyValue('/ship[ship]$1', "$2");'])
 
+   macro(DefaultTeamVizBoxAndWhere, ['box: {width: 210, height: 105, left: -55, top: -2.5, strokeWidth: 0}, where: {left: 0, top: 0, width: 80, height: 120},'])
+   
 // --------------- For the Verilog template ---------------
 
-// Search and replace all YOUR_GITHUB_ID with your GitHub ID, excluding non-word characters
-// (alphabetic, numeric, and "_" only)
 \TLV verilog_wrapper(/_top, _github_id)
    \SV_plus
       logic signed [7:0] energy [m5_SHIP_RANGE];
@@ -143,7 +161,8 @@
          .destroyed(/ship[*]>>1$destroyed),
          .enemy_x_p(enemy_x_p),
          .enemy_y_p(enemy_y_p),
-         .enemy_cloaked(/prev_enemy_ship[*]$cloaked),
+         .enemy_cloaked(/enemy_ship[*]$cloaked),
+         .enemy_destroyed(/enemy_ship[*]$destroyed),
          // Outputs:
          .x_a(x_a),
          .y_a(y_a),
@@ -152,10 +171,10 @@
          .attempt_cloak(/ship[*]$$attempt_cloak),
          .fire_dir(fire_dir)
       );
-   /prev_enemy_ship[*]
+   /enemy_ship[*]
       \SV_plus
-         assign *enemy_x_p[prev_enemy_ship] = $xx_p;
-         assign *enemy_y_p[prev_enemy_ship] = $yy_p;
+         assign *enemy_x_p[enemy_ship] = $xx_p;
+         assign *enemy_y_p[enemy_ship] = $yy_p;
    /ship[*]
       \SV_plus
          assign *x[ship] = >>1$xx_p;
@@ -169,11 +188,253 @@
       //$fire_dir[1:0] = /_top$fire_dir_vect[2 * (ship + 1) - 1 : 2 * ship];
 
 
+// ------------- VIZ Infra -------------
 
-// --------------- Sample player logic ---------------
+\TLV io_viz(/_name, _team_num)
+   // Visualization for inputs.
+   /ios_viz_only
+      \viz_js
+         box: {width: 210, height: 105, left: -55, top: -2.5, strokeWidth: 0},
+         init() {
+            const ret = {};
+            const ship = this.getIndex("ship");
+            const colors = ["red", "green"];
+            
+            // Headings
+            ret[`heading${_team_num}.${ship}`] = new fabric.Text(`Player${_team_num}\nShip${ship}`, {
+               left: m5_if(_team_num, 150, -50), top: 50,
+               originX: m5_if(_team_num, "left", "right"), originY: "center",
+               textAlign: "center",
+               fontFamily: "Roboto", fontSize: 11,
+               fill: colors[_team_num],
+            })
+            
+            // Draw I/Os.
+            
+            let pos = {in: 5, out: 12};
+            const makeIO = (name, out) => {
+               const p = out ? pos.out : pos.in;
+               ret[`${name}-pin`] = new fabric.Line([out ? 100 : 0, p + 7, out ? 110 : -10, p + 7], {stroke: "black", strokeWidth: 1});
+               ret[name] = new fabric.Text(name, {
+                  left: out ? 110 : -10, top: p,
+                  originX: out ? "left" : "right",
+                  fontFamily: "Roboto", fontSize: 6, fill: "purple",
+               });
+               ret[`${name}-value`] = new fabric.Text("-", {
+                  left: out ? 110 : -10, top: p + 7,
+                  originX: out ? "left" : "right",
+                  fontFamily: "Courier New", fontSize: 6, fill: "blue",
+               });
+               pos[out ? "out" : "in"] += 15;
+            };
+            // A function to apply signal values.
+            this.applyValue = (sig, as) => {
+               name = sig.signal.notFullName;
+               this.obj[`${name}-value`].set({text: sig[`as${as}`]().toString()});
+            };
+            // Outputs
+            makeIO("$xx_acc", true);
+            makeIO("$yy_acc", true);
+            makeIO("$attempt_fire", true);
+            makeIO("$fire_dir", true);
+            makeIO("$attempt_cloak", true);
+            // Inputs
+            makeIO("$xx_p", false);
+            makeIO("$yy_p", false);
+            makeIO("$xx_v", false);
+            makeIO("$yy_v", false);
+            makeIO("$energy", false);
+            makeIO("$destroyed", false);
+            ret.block = new fabric.Rect({left: -1, top: -1, width: 101, height: 101, fill: "transparent", stroke: "black", strokeWidth: 1});
+            
+            this.miniScale = 100 / 128;
+            const props = {width: m5_ship_width * this.miniScale, height: m5_ship_height * this.miniScale,
+                           originX: "center", originY: "center", visible: false,};
+            for (let p = 0; p < 2; p++) {
+               const myTeam = p == _team_num;
+               for (let s = 0; s < m5_SHIP_CNT; s++) {
+                  const color = (myTeam && s != ship) ? "gray" : colors[p];
+                  for (let c = 0; c < 2; c++) {
+                     ret[`mini${p}.${s}.${c}`] = new fabric.Rect({...props, ...{
+                        fill: color, strokeWidth: 0, opacity: 0.5 - c * 0.25,
+                     }});
+                  }
+                  // Cloaked ships.
+                  ret[`mini${p}.${s}.Cloaked`] = new fabric.Rect({...props, ...{
+                     fill: "transparent", strokeWidth: 1, stroke: color,
+                     opacity: 0.5,
+                  }});
+               }
+            }
+            
+            // Make objects for requested actions.
+            
+            // Attempt cloaking
+            ret.myCloak = new fabric.Rect({
+               ...props, ...{
+                  fill: "transparent", strokeWidth: 1, stroke: colors[_team_num], opacity: 0.5
+               }
+            });
+            
+            // Attempted firing
+            ret.fire = new fabric.Group([
+               // This invisible Rect establishes Group bounds.
+               new fabric.Rect({
+                  width:  (m5_ship_width  + 8) * this.miniScale,
+                  height: (m5_ship_height + 8) * this.miniScale,
+                  originX: "center", originY: "center",
+                  visible: false,
+                  strokeWidth: 0,
+                  left: 0, top: 0,
+               }),
+               // This one is the fire indicator.
+               new fabric.Rect({
+                  width: 4 * this.miniScale, height: 4 * this.miniScale,
+                  strokeWidth: 0, fill: "black",
+                  originX: "center", originY: "center",
+                  opacity: 0.5,
+                  left: (m5_half_ship_width + 2) * this.miniScale,
+                  top: 0,
+               }),
+            ], {
+               originX: "center", originY: "center",
+               visible: false,
+            });
+            
+            // Acceleration
+            ret.accel = new fabric.Circle({
+               strokeWidth: 0, fill: colors[_team_num],
+               originX: "center", originY: "center",
+               radius: 2,
+               visible: false
+            });
+            
+            return ret;
+         },
+         render() {
+            const ship = this.getIndex("ship");
+            m5_ApplyVal($xx_acc, SignedInt)
+            m5_ApplyVal($yy_acc, SignedInt)
+            m5_ApplyVal($attempt_fire, Bool)
+            m5_ApplyVal($fire_dir, Int)
+            m5_ApplyVal($attempt_cloak, Bool)
+            m5_ApplyVal($xx_p, SignedInt)
+            m5_ApplyVal($yy_p, SignedInt)
+            m5_ApplyVal($xx_v, SignedInt)
+            m5_ApplyVal($yy_v, SignedInt)
+            m5_ApplyVal($energy, Int)
+            m5_ApplyVal($destroyed, Bool)
+            
+            // Draw mini ships.
+            const scale = [this.miniScale, -this.miniScale];  // Indexed by _team_num. Sign flips P1.
+            for (let p = 0; p < 2; p++) {
+               const myTeam = p == _team_num;
+               for (let s = 0; s < m5_SHIP_CNT; s++) {
+                  const $xx_p = myTeam ? '/ship[s]$xx_p' : '/_name/enemy_ship[s]$xx_p';
+                  const $yy_p = myTeam ? '/ship[s]$yy_p' : '/_name/enemy_ship[s]$yy_p';
+                  const destroyed = (myTeam ? '/ship[s]$destroyed' : '/_name/enemy_ship[s]$destroyed').asBool();
+                  const cloaked = !myTeam && '/_name/enemy_ship[s]$cloaked'.asBool();
+                  for (let c = 0; c < 2; c++) {
+                     this.obj[`mini${p}.${s}.${c}`].set({
+                        left: $xx_p.asSignedInt() * scale[_team_num] + 50,
+                        top: -$yy_p.asSignedInt() * scale[_team_num] + 50,
+                        visible: !destroyed && !cloaked,
+                     });
+                     $xx_p.step(-1);
+                     $yy_p.step(-1);
+                  }
+                  this.obj[`mini${p}.${s}.Cloaked`].set({
+                     left: this.obj[`mini${p}.${s}.0`].left,
+                     top:  this.obj[`mini${p}.${s}.0`].top,
+                     visible: !destroyed && cloaked,
+                  });
+               }
+            }
+            
+            const destroyed = '/ship[ship]$destroyed'.asBool();
+            
+            // Attempt cloak
+            const attemptCloak = '/ship[ship]$attempt_cloak'.asBool();
+            const myMini = this.obj[`mini${_team_num}.${ship}.0`];
+            this.obj.myCloak.set({
+               visible: attemptCloak && !destroyed,
+               left: myMini.left,
+               top: myMini.top,
+            });
+            if (attemptCloak) {
+               // Hide my normal mini.
+               myMini.set({visible: false});
+            }
+            // Attempt fire.
+            const fire = '/ship[ship]$attempt_fire'.asBool();
+            this.obj.fire.set({visible: fire && !destroyed});
+            if (fire && !destroyed) {
+               this.obj.fire.set({
+                  left: myMini.left,
+                  top:  myMini.top,
+                  angle: 90 * ('/ship[ship]$fire_dir'.asInt() - 2 * _team_num),  // (flipped for second player)
+               });
+            }
+            // Acceleration vector.
+            const x1 =  '/ship[ship]$xx_p'.asSignedInt() * scale[_team_num] + 50;
+            const y1 = -'/ship[ship]$yy_p'.asSignedInt() * scale[_team_num] + 50;
+            this.obj.accel.set({
+               left: x1 + '/ship[ship]$xx_acc'.asSignedInt() * scale[_team_num],
+               top:  y1 - '/ship[ship]$yy_acc'.asSignedInt() * scale[_team_num],
+               visible: !destroyed,
+            });
+         },
+         where: {width: 210, height: 105, left: -55, top: -2.5}
 
-// An opponent providing random behavior.
+// Use in place of io_viz if no custom VIZ is provided.
+\TLV io_viz_only(/_top, _team_num)
+   // Visualize IOs.
+   m5+io_viz(/_top, _team_num)
+   // Visualize your logic, if you like, here, within the bounds {left: 0..100, top: 0..100}.
+   \viz_js
+      m5_DefaultTeamVizBoxAndWhere()
+   
+
+
+// --------------- Sample player logic/VIZ ---------------
+
+// Team logic providing random behavior.
 \TLV team_random(/_top)
+   /ship[*]
+      m4_rand($rand, 31, 0, ship)
+      $xx_acc[3:0] = $rand[3:0];
+      $yy_acc[3:0] = $rand[7:4];
+      $attempt_fire = $rand[8];
+      $fire_dir[1:0] = $rand[10:9];
+      $attempt_shield = $rand[11];
+      $attempt_cloak = $rand[12];
+         
+      
+\TLV team_random_viz(/_top, _team_num)
+   // Visualize IOs.
+   m5+io_viz(/_top, _team_num)
+   
+   // Visualize your logic, if you like, here, within the bounds {left: 0..100, top: 0..100}.
+   \viz_js
+      m5_DefaultTeamVizBoxAndWhere()
+      init() {
+         return {
+            note: new fabric.Text("I''m so random!", {
+               left: 10, top: 50, originY: "center", fill: "black", fontSize: 10,
+            }),
+            full: new fabric.Rect({
+               left: 0, top: 0, width: 100, height: 100, strokeWidth: 0, fill: "#0000FF20",
+            }),
+         };
+      },
+      render() {
+         // ... draw using fabric.js and signal values. (See VIZ docs under "LEARN" menu.)
+      },
+
+
+
+// An opponent providing demo first-player behavior.
+\TLV team_demo1(/_top)
    /ship[*]
       $xx_acc[7:0] = #ship == 0 ?
                       *cyc_cnt == 1 ? (8'd3) :
@@ -274,19 +535,13 @@
                           1'b0 :
                        1'b0;
       
-      
-      /*
-      m4_rand($rand, 31, 0, ship)
-      $xx_acc[3:0] = $rand[3:0];
-      $yy_acc[3:0] = $rand[7:4];
-      $attempt_fire = $rand[8];
-      $fire_dir[1:0] = $rand[10:9];
-      $attempt_shield = $rand[11];
-      $attempt_cloak = $rand[12];
-      */
+\TLV team_demo1_viz(/_top, _team_num)
+   // Visualize IOs.
+   m5+io_viz_only(/_top, _team_num)
 
-// Team logic providing testing behavior.
-\TLV team_test1(/_top)
+
+// Team logic providing demo second player behavior.
+\TLV team_demo2(/_top)
    /ship[*]
       $xx_acc[7:0] = #ship == 0 ?
                       *cyc_cnt == 1 ? (-8'd3) :
@@ -372,32 +627,43 @@
                           1'b0 :
                        (*cyc_cnt >= 4);
 
+\TLV team_demo2_viz(/_top, _team_num)
+   // Visualize IOs.
+   m5+io_viz_only(/_top, _team_num)
+
+
 // An opponent that uses default values (and thus, the ships do absolutely nothing).
 \TLV team_sitting_duck(/_top)
    /ship[*]
 
-// ------------------- End of sample player logic -----------------------
+\TLV team_sitting_duck_viz(/_top, _team_num)
+   // Visualize IOs.
+   m5+io_viz_only(/_top, _team_num)
 
+// ------------------- End of sample player logic -----------------------
 
 
 // Macro to instantiate and connect up the logic for both players.
 \TLV player_logic(/_secret, /_name, _team_num)
    /_name
+      \viz_js
+         box: {width: 80, height: 120, strokeWidth: 0},
+         where: {left: m5_if(_team_num, 0, -80), top: -220, width: 80, height: 120},
+
       m5_var(enemy_num, m5_calc(1 - _team_num))
       m5_push_var(my_ship, /_secret/player[_team_num]/ship[#ship])
-      m5_push_var(enemy_ship, /_secret/player[m5_enemy_num]/ship[#prev_enemy_ship])
+      m5_push_var(enemy_ship, /_secret/player[m5_enemy_num]/ship[#enemy_ship])
       $reset = /_secret$reset;
       `BOGUS_USE($reset)
-      
+
       // State that is accessible to contestants.
       /m5_SHIP_HIER    // So team code can use /ship[*].
          $reset = /_secret$reset;
-         
+                  
          // Provide default control output signal values.
          $ANY = /_secret/default_controls$ANY;
-         
+
          // Provide visibility to own ship state. These all come from m5_\my_ship, but we don't use $ANY to avoid exposing private state.
-         // Also, we apply cloaking to position.
          $xx_p[7:0] = m5_my_ship>>1$xx_p;
          $yy_p[7:0] = m5_my_ship>>1$yy_p;
          $xx_v[5:0] = m5_my_ship>>1$xx_v;
@@ -406,20 +672,30 @@
          $destroyed = m5_my_ship>>1$destroyed;
          // The above do not have to be used.
          `BOGUS_USE($reset $xx_p $yy_p $xx_v $yy_v $energy $destroyed)
-      
+
       // Provide visibility to enemy ship state.
       /prev_enemy_ship[m5_SHIP_RANGE]
+         // This scope is a legacy name, aliased to /enemy_ship.
+         $ANY = /_name/enemy_ship[#prev_enemy_ship]$ANY;
+         `BOGUS_USE($dummy)  // Ensure non-empty $ANY.
+      /enemy_ship[m5_SHIP_RANGE]
          $cloaked = m5_enemy_ship>>1$cloaked;
+         // Position, with cloaking applied.
          $xx_p[7:0] = $cloaked ? >>1$xx_p : -m5_enemy_ship>>1$xx_p;  // Negative to map coordinate systems.
          $yy_p[7:0] = $cloaked ? >>1$yy_p : -m5_enemy_ship>>1$yy_p;
          $destroyed = m5_enemy_ship>>1$destroyed;
+         $dummy = 1'b0;
          // The above do not have to be used.
-         `BOGUS_USE($xx_p $yy_p $destroyed)
-      
+         `BOGUS_USE($xx_p $yy_p $cloaked $destroyed)
+
       m5_pop(my_ship, enemy_ship)   /// To avoid exposureing /_secret.
       // ------ Instantiate Team Macro ------
-      m5+call(team_\m5_get_ago(github_id, m5_enemy_num), /_name)
-
+      m5_var(my_github_id, m5_get_ago(github_id, m5_enemy_num))
+      m5+call(team_\m5_my_github_id, /_name, /_secret)
+      // Instantiate VIZ macro in devel mode if it exists (using an unofficial test).
+      /ship[*]
+         m5_if_eq(m5_viz_mode, devel, ['m4_ifdef(['m4tlv_team_']m5_my_github_id['_viz__body'], ['m5+call(team_\m5_my_github_id['']_viz, /_name, _team_num)'])'])
+      
 \TLV showdown(/_top, /_secret)
    /// Each team submits a file containing a TLV macro whose name is the GitHub ID matching the
    /// repository and the submission (omitting unsupported characters, like '-') and a team name as:
@@ -511,9 +787,9 @@
             `BOGUS_USE($dummy)  // Make sure this is pulled through the $ANY chain from /defaults to prevent empty $ANYs.
             `BOGUS_USE($xx_a[3:0] $yy_a[3:0] $xx_acc[3:0] $yy_acc[3:0])  // A bug workaround to consume all bits for $ANY.
             
-            // Cap acceleration.
-            $xx_a[3:0] = m5_cap($xx_acc, 3, m5_max_acceleration);
-            $yy_a[3:0] = m5_cap($yy_acc, 3, m5_max_acceleration);
+            // Cap acceleration, and assign zero on reset, just for better VIZ.
+            $xx_a[3:0] = $reset ? 4'd0 : m5_cap($xx_acc, 3, m5_max_acceleration);
+            $yy_a[3:0] = $reset ? 4'd0 : m5_cap($yy_acc, 3, m5_max_acceleration);
             
             
             // Process attempted actions, consuming energy for those that can be taken.
@@ -711,7 +987,7 @@
                      }).thenSet({ visible: is_bullet_exists });
                      // Animate bullet rect similarly:
                      this.obj.bullet_rect.set({
-                        visible: this.obj.bullet_img.visible,
+                        visible: this.obj.bullet_img.visible && m5_show_hit_boxes,
                         opacity: this.obj.bullet_img.opacity,
                         left: this.obj.bullet_img.left,
                         top: this.obj.bullet_img.top,
@@ -723,7 +999,7 @@
                      }, {
                         duration: m5_default_anim_duration,
                         easing: m5_default_anim_easing
-                     }).thenSet({ visible: is_bullet_exists });
+                     }).thenSet({ visible: is_bullet_exists && m5_show_hit_boxes });
                   }
             
             
@@ -762,7 +1038,7 @@
                         }
                      );
                      ret[`ship_sprite${i}_img`].set({
-                          originX: "center", originY: "center"
+                          originX: "center", originY: "center", visible: false,
                      });
                   }
             
@@ -813,9 +1089,20 @@
                      });
                   }
                   
+                  
+                  // Trails.
+                  for (let i = 0; i < m5_trail_length; i++) {
+                     ret[`trail${i}`] = new fabric.Rect({
+                         width: 1, height: 1,
+                         visible: false, fill: player_id ? "#d0f0d0" : "#f0d0d0", strokeWidth: 0,
+                         originX: "center",
+                         originY: "center",
+                         opacity: 1.0 - 0.3 * i,
+                     });
+                  }
+                  
                   return ret;
                },
-            
             
             
             
@@ -848,23 +1135,26 @@
             
             
                   // Determine the correct starting and ending angles for the ship for this cycle.
-                  // Starting/ending angle are based on the next cycle's acceleration.
+                  // In demo mode, starting/ending angles are based on the next cycle's acceleration
+                  // for more realistic behavior. For devel mode, they reflect current values.
                   // When there is no acceleration, find the last acceleration to determine angle.
-                  // So, determine was and is angles (with search and 1 cycle offset).
+                  // So, determine was and is angles (with search and 1 cycle offset if demoing).
                   const getAccel = (step) => {
-                     const $xx_a = '$xx_a'.step(step + 1);   // Angle is based on next cycle's value.
-                     const $yy_a = '$yy_a'.step(step + 1);   //   "
-                     while (($xx_a.asSignedInt() == 0) && ($yy_a.asSignedInt() == 0))
+                     const $xx_a = '$xx_a'.step(step + m5_early_turns);   // Angle is based on next cycle's value.
+                     const $yy_a = '$yy_a'.step(step + m5_early_turns);   //   "
+                     const $reset = '$reset'.step(step + m5_early_turns);
+                     while (! $reset && ($xx_a.asSignedInt() == 0) && ($yy_a.asSignedInt() == 0))
                      {
-                        $xx_a.stepTransition(-1);
-                        $yy_a.stepTransition(-1);
+                        $xx_a.step(-1);
+                        $yy_a.step(-1);
+                        $reset.step(-1);
                      }
                      return [$xx_a.asSignedInt(1), $yy_a.asSignedInt(1)];
                   }
                   let [angle_was_xx_a, angle_was_yy_a] = getAccel(step);
                   let [angle_is_xx_a,  angle_is_yy_a ] = getAccel(0);
                   // Transition between angle of acceleration before and after.
-                  const toAngle = (x, y) => -(Math.atan2(y, x) * 180 / Math.PI) + 90;
+                  const toAngle = (x, y) => (x == 0 && y == 0) ? 45 : -(Math.atan2(y, x) * 180 / Math.PI) + 90;
                   const set_angle = toAngle(angle_was_xx_a, angle_was_yy_a);
                   let animate_angle = toAngle(angle_is_xx_a, angle_is_yy_a);
                   // If the animate_angle is more than 180 degrees from the set_angle, adjust to minimize spin.
@@ -933,7 +1223,7 @@
                      left: currentShipImage.left,
                      top: currentShipImage.top,
                      opacity: toOpacityHitBox(was_do_cloak),
-                     visible
+                     visible: visible && m5_show_hit_boxes,
                   }).animate({
                      left: is_xx_p,
                      top: -is_yy_p,
@@ -942,7 +1232,7 @@
                      duration: m5_default_anim_duration,
                      easing: m5_default_anim_easing
                   }).thenSet({
-                      visible: !is_destroyed,
+                      visible: !is_destroyed && m5_show_hit_boxes,
                       opacity: toOpacityHitBox(is_do_cloak),
                   });
 
@@ -1019,12 +1309,27 @@
                         this.obj[`explody_sprite${i}`].set({visible: false});
                      }
                   }
+                  
+                  // Show trails.
+                  const $xx_p2 = '$xx_p';
+                  const $yy_p2 = '$yy_p';
+                  const $destroyed2 = '$destroyed';
+                  for (let i = 0; i < m5_trail_length; i++) {
+                     this.obj[`trail${i}`].set({
+                        visible: ! $destroyed2.asBool(true),
+                        left: $xx_p2.asSignedInt(0),
+                        top: -$yy_p2.asSignedInt(0),
+                     });
+                     $xx_p2.step(-1);
+                     $yy_p2.step(-1);
+                     $destroyed2.step(-1);
+                  }
                }
       
       
       
       
-      /background
+      /foreground
          // ================  FOREGROUND VIZ  ================
          \viz_js
             name: "foreground",
@@ -1197,18 +1502,18 @@
 \SV
    m5_makerchip_module
 \TLV
-   m5_team(YOUR_GITHUB_ID, YOUR_TEAM_NAME)
 
    // Define teams.
-   m5_team(random, Random 1)
-   ///m5_team(random, Random 2)
+   ///m5_team(random, Random 1)
+   m5_team(random, Random 2)
+   ///m5_team(demo1, Demo 1)
+   m5_team(demo2, Demo 2)
    ///m5_team(sitting_duck, Sitting Duck)
-   m5_team(test1, Test 1)
    
    // Instantiate the Showdown environment.
    m5+showdown(/top, /secret)
    
    *passed = /secret$passed;
-   *failed = /secret$failed || (*cyc_cnt == 20);
+   *failed = /secret$failed;
 \SV
    endmodule
