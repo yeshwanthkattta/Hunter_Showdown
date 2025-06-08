@@ -747,24 +747,27 @@
          
                return { background_img: background };
             }
-
+      
+      
       // Win logic:
       $lose_id[1:0] =
          $reset              ? 2'd0 :
          >>1$lose_id != 2'd0 ? >>1$lose_id :  // sticky
-         *cyc_cnt > 596 && (/player[*]$lost == 2'b0)  // max_cycles
-                             ? 2'b11 :
          //default
                                /player[*]$lost;
-
+      
       
       // ||||||||||||||||  PLAYER LOGIC ||||||||||||||||
       /player[1:0]
          $player_id = (#player != 0);
-         $lost = (& /ship[*]>>1$destroyed);
+         
+         // Win logic:
+         $ship_cnt[m5_SHIP_CNT_RANGE] = m5_repeat(m5_SHIP_CNT, ['{ m5_SHIP_CNT_MAX'b0, ! /ship[m5_LoopCnt]$destroyed} + ']) m5_SHIP_CNT_HIGH'b0;
+         $lost = (& /ship[*]>>1$destroyed) ||  // all my ships are destroyed
+                 (*cyc_cnt > 590 && (/other_player$ship_cnt >= $ship_cnt));  // Time expired and I don't have more ships.
          
          /other_player
-            //$ANY = /player[!/player$player_id]$ANY;
+            $ANY = /player[!/player$player_id]$ANY;
             
             /m5_SHIP_HIER
                $ANY = /player[! /player$player_id]/ship$ANY;
@@ -1505,10 +1508,11 @@
 
    // Define teams.
    ///m5_team(random, Random 1)
-   m5_team(random, Random 2)
+   ///m5_team(random, Random 2)
    ///m5_team(demo1, Demo 1)
-   m5_team(demo2, Demo 2)
-   ///m5_team(sitting_duck, Sitting Duck)
+   ///m5_team(demo2, Demo 2)
+   m5_team(sitting_duck, Sitting Duck)
+   m5_team(sitting_duck, Sitting Duck2)
    
    // Instantiate the Showdown environment.
    m5+showdown(/top, /secret)
