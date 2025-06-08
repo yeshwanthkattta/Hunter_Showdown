@@ -34,7 +34,7 @@
    /    $xx_p[7:0], $yy_p[7:0]: Position of your ships as affected by previous cycle's acceleration. (signed value, unsigned type)
    /    $energy[7:0]:   The energy supply of each ship, as updated by inputs last cycle.
    /    $destroyed:     Asserted if and when the ships are destroyed.
-   / /prev_enemy_ship[2:0]: Reflecting enemy input in the previous cycle.
+   / /enemy_ship[2:0]: Reflecting enemy input in the previous cycle.
    /    $xx_p[7:0], $yy_p[7:0]: Positions of enemy ships. (signed value, unsigned type)
    /    $cloaked: Whether the enemy ships are cloaked; if asserted enemy xx_p and xy_p did not update.
    /    $destroyed: Whether the enemy ship has been destroyed.

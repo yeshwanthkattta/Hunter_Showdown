@@ -35,8 +35,8 @@ Other game parameters like hit box and board sizes can be found at the top of `s
 
 You'll construct your control logic in a copy of either:
 
-- `showdown_template.tlv` (to code your logic in TL-Verilog) or
-- `showdown_verilog_template.tlv` (to code your logic in Verilog)
+- For TL-Verilog: `showdown_template.tlv` [[open in Makerchip](https://www.makerchip.com/sandbox?code_url=https%3A%2F%2Fraw.githubusercontent.com%2Frweda%2Fshowdown-2025-space-battle%2Frefs%2Fheads%2Fmain%2Fshowdown_template.tlv)]
+- For plain old SystemVerilog: `showdown_verilog_template.tlv` [[open in Makerchip](https://www.makerchip.com/sandbox?code_url=https%3A%2F%2Fraw.githubusercontent.com%2Frweda%2Fshowdown-2025-space-battle%2Frefs%2Fheads%2Fmain%2Fshowdown_verilog_template.tlv)]
 
 Comments in those files provide interface signal details. All you need is the one file in GitHub for submission. We suggest, using the green "Use this template" button from [this repository](https://github.com/rweda/showdown-2025-space-battle). Clone your new Showdown repository for local editing. Copy a template file into a new `.tlv` file in this repo for you work. (Alternatively, you could fork the repo and edit directly in the template file so you can pull future changes.)
 
