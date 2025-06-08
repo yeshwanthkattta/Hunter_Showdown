@@ -15,7 +15,7 @@
    var(ship_width, 8)
    var(ship_height, 8)
    var(bullet_width, 2)
-   var(bullet_height, 10)
+   var(bullet_height, 10)  /// (this is also the bullet's speed (distance per cycle))
    / Bullets travel (ship_height + bullet_height) / 2 = 9 each cycle.
    
    / Energy Supply
@@ -45,7 +45,7 @@
    / viz_mode can be set before including this library.
    /   devel: [default] for development
    /   demo: optimized for demonstration
-   if_ndef(viz_mode, [
+   if_var_ndef(viz_mode, [
       var(viz_mode, devel)
    ])
    case(viz_mode, devel, [
@@ -1507,12 +1507,11 @@
 \TLV
 
    // Define teams.
-   ///m5_team(random, Random 1)
+   m5_team(random, Random 1)
    ///m5_team(random, Random 2)
    ///m5_team(demo1, Demo 1)
-   ///m5_team(demo2, Demo 2)
-   m5_team(sitting_duck, Sitting Duck)
-   m5_team(sitting_duck, Sitting Duck2)
+   m5_team(demo2, Demo 2)
+   ///m5_team(sitting_duck, Sitting Duck)
    
    // Instantiate the Showdown environment.
    m5+showdown(/top, /secret)
