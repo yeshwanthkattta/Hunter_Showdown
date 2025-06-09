@@ -44,7 +44,7 @@ Edit your local file in Makerchip (supported by Chrome and Edge) with auto-save.
 
 ## Walkthrough/Promo Video
 
-[▶️ Play Video](./Showdown2025Demo.mp4)
+[![▶️ Play Video](./PromoVideoThumb.png)](https://youtu.be/B-j03kmqDcI?si=837uOC3RwJAY7wxf)
 
 ## Should I use TL-Verilog or Verilog?
 
