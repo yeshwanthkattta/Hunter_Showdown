@@ -42,6 +42,10 @@ Comments in those files provide interface signal details. All you need is the on
 
 Edit your local file in Makerchip (supported by Chrome and Edge) with auto-save. Or edit in your favorite editor, and compile in Makerchip by using "Project" > "Connect File".
 
+## Walkthrough/Promo Video
+
+[▶️ Play Video](./Showdown2025Demo.mp4)
+
 ## Should I use TL-Verilog or Verilog?
 
 It's up to you. Possible reasons to use pure Verilog inlcude:
