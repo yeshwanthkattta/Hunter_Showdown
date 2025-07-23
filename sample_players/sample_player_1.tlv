@@ -12,7 +12,7 @@
    / Use the latest template for submission.
    /
    / Just 3 steps:
-   /   - Replace all YOUR_GITHUB_ID and YOUR_TEAM_NAME.
+   /   - Replace all YOUR_GITHUB_ID and Rando.
    /   - Code your logic in the module below.
    /   - Submit by Sun. July 26, 11 PM IST/1:30 PM EDT.
    /
@@ -50,7 +50,7 @@
 // Modify this TL-Verilog macro to implement your control circuitry.
 // Replace YOUR_GITHUB_ID with your GitHub ID, excluding non-word characters (alphabetic, numeric,
 // and "_" only)
-\TLV team_YOUR_GITHUB_ID(/_top)
+\TLV team_bogus(/_top)
    /ship[*]
       
       //-----------------------\
@@ -58,17 +58,17 @@
       //-----------------------/
       
       // E.g.:
-      //$xx_acc[3:0] = 4'd0;
-      //$yy_acc[3:0] = 4'd0;
-      //$attempt_fire = 1'b0;
-      //$fire_dir[1:0] = 2'd0;
-      //$attempt_cloak = 1'b0;
-      //$attempt_shield = 1'b0;
+      m4_rand($xx_acc, 3, 0, ship)
+      m4_rand($yy_acc, 3, 0, ship)
+      m4_rand($attempt_fire, 0, 0, ship)
+      m4_rand($fire_dir, 1, 0, ship)
+      m4_rand($attempt_cloak, 0, 0, ship)
+      m4_rand($attempt_shield, 0, 0, ship)
 
 
 // [Optional]
 // Visualization of your logic for each ship.
-\TLV team_YOUR_GITHUB_ID_viz(/_top, _team_num)
+\TLV team_bogus_viz(/_top, _team_num)
    m5+io_viz(/_top, _team_num)   /// Visualization of your IOs.
    \viz_js
       m5_DefaultTeamVizBoxAndWhere()
@@ -98,7 +98,7 @@
    // Your team as the first. Provide:
    //   - your GitHub ID, (as in your \TLV team_* macro, above)
    //   - your team name--anything you like (that isn't crude or disrespectful)
-   m5_team(YOUR_GITHUB_ID, YOUR_TEAM_NAME)
+   m5_team(bogus, Rando)
    
    // Choose your opponent.
    // Note that inactive teams must be commented with "///", not "//", to prevent M5 macro evaluation.
