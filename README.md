@@ -96,6 +96,10 @@ Assert `*passed` and/or `*failed` using, e.g., ` || *cyc_cnt > 50`, to limit sim
 
 Contestants are encouraged to use VIZ for debugging. Documentation is available in the Makerchip IDE. Custom VIZ features, however should be disabled in your final submission. Obstructive VIZ may result in disqualification.
 
+### Battling Others
+
+The [Competition Template](./competition_template.tlv) can be used to set up a battle with an opponent.
+
 ### Seeking Help
 
 Seek help in Slack. Help others. A bit of competition can add to the fun, but the spirit of the competition is collaboration and community building.
