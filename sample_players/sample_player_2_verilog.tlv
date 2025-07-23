@@ -23,44 +23,46 @@
    var(viz_mode, devel)  /// Enables VIZ for development.
                          /// Use "devel" or "demo". ("demo" will be used in competition.)
 
+   macro(team_bogus2_module, ['
+      module team_bogus2 (
+         // Inputs:
+         input logic clk, input logic reset,
+         input logic signed [7:0] x [m5_SHIP_RANGE], input logic signed [7:0] y [m5_SHIP_RANGE],   // Positions of your ships, as affected by last cycle's acceleration.
+         input logic [7:0] energy [m5_SHIP_RANGE],   // The energy supply of each ship, as affected by last cycle's actions.
+         input logic [m5_SHIP_RANGE] destroyed,   // Asserted if and when the ships are destroyed.
+         input logic signed [7:0] enemy_x_p [m5_SHIP_RANGE], input logic signed [7:0] enemy_y_p [m5_SHIP_RANGE],   // Positions of enemy ships as affected by their acceleration last cycle.
+         input logic [m5_SHIP_RANGE] enemy_cloaked,   // Whether the enemy ships are cloaked, in which case their enemy_x_p and enemy_y_p will not update.
+         input logic [m5_SHIP_RANGE] enemy_destroyed, // Whether the enemy ships have been destroyed.
+         // Outputs:
+         output logic signed [3:0] x_a [m5_SHIP_RANGE], output logic signed [3:0] y_a [m5_SHIP_RANGE],  // Attempted acceleration for each of your ships; capped by max_acceleration (see showdown_lib.tlv).
+         output logic [m5_SHIP_RANGE] attempt_fire, output logic [m5_SHIP_RANGE] attempt_shield, output logic [m5_SHIP_RANGE] attempt_cloak,  // Attempted actions for each of your ships.
+         output logic [1:0] fire_dir [m5_SHIP_RANGE]   // Direction to fire (if firing). (For the first player: 0 = right, 1 = down, 2 = left, 3 = up)
+      );
+
+      // Parameters defining the valid ranges of input/output values can be found near the top of "showdown_lib.tlv".
+
+      // /------------------------------\
+      // | Your Verilog logic goes here |
+      // \------------------------------/
+
+      // E.g.:
+      for (genvar ship = 0; ship < 3; ship++) begin
+         always @(posedge clk) begin
+            x_a[ship] = $random;   // Default acceleration to zero.
+            y_a[ship] = $random;   // Default acceleration to zero.
+            attempt_fire[ship] = $random;   // Default to not firing.
+            fire_dir[ship] = $random;   // Default fire direction to right.
+            attempt_cloak[ship] = $random;   // Default to not cloaking.
+            attempt_shield[ship] = $random;   // Default to not shielding.
+         end
+      end
+
+      endmodule
+   '])
+
 \SV
    // Include the showdown framework.
    m4_include_lib(https://raw.githubusercontent.com/rweda/showdown-2025-space-battle/a211a27da91c5dda590feac280f067096c96e721/showdown_lib.tlv)
-
-   module team_bogus2 (
-      // Inputs:
-      input logic clk, input logic reset,
-      input logic signed [7:0] x [m5_SHIP_RANGE], input logic signed [7:0] y [m5_SHIP_RANGE],   // Positions of your ships, as affected by last cycle's acceleration.
-      input logic [7:0] energy [m5_SHIP_RANGE],   // The energy supply of each ship, as affected by last cycle's actions.
-      input logic [m5_SHIP_RANGE] destroyed,   // Asserted if and when the ships are destroyed.
-      input logic signed [7:0] enemy_x_p [m5_SHIP_RANGE], input logic signed [7:0] enemy_y_p [m5_SHIP_RANGE],   // Positions of enemy ships as affected by their acceleration last cycle.
-      input logic [m5_SHIP_RANGE] enemy_cloaked,   // Whether the enemy ships are cloaked, in which case their enemy_x_p and enemy_y_p will not update.
-      input logic [m5_SHIP_RANGE] enemy_destroyed, // Whether the enemy ships have been destroyed.
-      // Outputs:
-      output logic signed [3:0] x_a [m5_SHIP_RANGE], output logic signed [3:0] y_a [m5_SHIP_RANGE],  // Attempted acceleration for each of your ships; capped by max_acceleration (see showdown_lib.tlv).
-      output logic [m5_SHIP_RANGE] attempt_fire, output logic [m5_SHIP_RANGE] attempt_shield, output logic [m5_SHIP_RANGE] attempt_cloak,  // Attempted actions for each of your ships.
-      output logic [1:0] fire_dir [m5_SHIP_RANGE]   // Direction to fire (if firing). (For the first player: 0 = right, 1 = down, 2 = left, 3 = up)
-   );
-   
-   // Parameters defining the valid ranges of input/output values can be found near the top of "showdown_lib.tlv".
-   
-   // /------------------------------\
-   // | Your Verilog logic goes here |
-   // \------------------------------/
-      
-   // E.g.:
-   for (genvar ship = 0; ship < 3; ship++) begin
-      always @(posedge clk) begin
-         x_a[ship] = $random;   // Default acceleration to zero.
-         y_a[ship] = $random;   // Default acceleration to zero.
-         attempt_fire[ship] = $random;   // Default to not firing.
-         fire_dir[ship] = $random;   // Default fire direction to right.
-         attempt_cloak[ship] = $random;   // Default to not cloaking.
-         attempt_shield[ship] = $random;   // Default to not shielding.
-      end
-   end
-   
-   endmodule
 
 
 // [Optional]
@@ -114,3 +116,7 @@
    *failed = /secret$failed;
 \SV
    endmodule
+\TLV
+   // Declare Verilog modules.
+   m4_ifdef(['m5']_team_\m5_get_ago(github_id, 0)_module, ['m5_call(team_\m5_get_ago(github_id, 0)_module)'])
+   m4_ifdef(['m5']_team_\m5_get_ago(github_id, 1)_module, ['m5_call(team_\m5_get_ago(github_id, 1)_module)'])
