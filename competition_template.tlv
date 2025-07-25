@@ -23,7 +23,7 @@
    m4_include_lib(https://raw.githubusercontent.com/rweda/showdown-2025-space-battle/main/sample_players/random.tlv)
 
    // Include the Showdown framework.
-   m4_include_lib(https://raw.githubusercontent.com/rweda/showdown-2025-space-battle/a211a27da91c5dda590feac280f067096c96e721/showdown_lib.tlv)
+   m4_include_lib(https://raw.githubusercontent.com/rweda/showdown-2025-space-battle/6131e647214fe286616e51542d511cc49ed3fdc2/showdown_lib.tlv)
    
    m5_makerchip_module
 \TLV
