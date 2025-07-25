@@ -143,46 +143,46 @@
 
 \TLV verilog_wrapper(/_top, _github_id)
    \SV_plus
-      logic signed [7:0] energy [m5_SHIP_RANGE];
-      logic signed [7:0] x [m5_SHIP_RANGE];
-      logic signed [7:0] y [m5_SHIP_RANGE];
-      logic signed [7:0] enemy_x_p [m5_SHIP_RANGE];
-      logic signed [7:0] enemy_y_p [m5_SHIP_RANGE];
-      logic signed [3:0] x_a [m5_SHIP_RANGE];
-      logic signed [3:0] y_a [m5_SHIP_RANGE];
-      logic [1:0] fire_dir [m5_SHIP_RANGE];
+      logic signed [7:0] _github_id['']energy [m5_SHIP_RANGE];
+      logic signed [7:0] _github_id['']x [m5_SHIP_RANGE];
+      logic signed [7:0] _github_id['']y [m5_SHIP_RANGE];
+      logic signed [7:0] _github_id['']enemy_x_p [m5_SHIP_RANGE];
+      logic signed [7:0] _github_id['']enemy_y_p [m5_SHIP_RANGE];
+      logic signed [3:0] _github_id['']x_a [m5_SHIP_RANGE];
+      logic signed [3:0] _github_id['']y_a [m5_SHIP_RANGE];
+      logic [1:0] _github_id['']fire_dir [m5_SHIP_RANGE];
       team_['']_github_id team_['']_github_id(
          // Inputs:
          .clk(clk),
          .reset(/_top$reset),
-         .x(x),
-         .y(y),
-         .energy(energy),
+         .x(_github_id['']x),
+         .y(_github_id['']y),
+         .energy(_github_id['']energy),
          .destroyed(/ship[*]>>1$destroyed),
-         .enemy_x_p(enemy_x_p),
-         .enemy_y_p(enemy_y_p),
+         .enemy_x_p(_github_id['']enemy_x_p),
+         .enemy_y_p(_github_id['']enemy_y_p),
          .enemy_cloaked(/enemy_ship[*]$cloaked),
          .enemy_destroyed(/enemy_ship[*]$destroyed),
          // Outputs:
-         .x_a(x_a),
-         .y_a(y_a),
+         .x_a(_github_id['']x_a),
+         .y_a(_github_id['']y_a),
          .attempt_fire(/ship[*]$$attempt_fire),
          .attempt_shield(/ship[*]$$attempt_shield),
          .attempt_cloak(/ship[*]$$attempt_cloak),
-         .fire_dir(fire_dir)
+         .fire_dir(_github_id['']fire_dir)
       );
    /enemy_ship[*]
       \SV_plus
-         assign *enemy_x_p[enemy_ship] = $xx_p;
-         assign *enemy_y_p[enemy_ship] = $yy_p;
+         assign *_github_id['']enemy_x_p[enemy_ship] = $xx_p;
+         assign *_github_id['']enemy_y_p[enemy_ship] = $yy_p;
    /ship[*]
       \SV_plus
-         assign *x[ship] = >>1$xx_p;
-         assign *y[ship] = >>1$yy_p;
-         assign *energy[ship] = >>1$energy;
-         assign $$xx_acc[3:0] = *x_a[ship];
-         assign $$yy_acc[3:0] = *y_a[ship];
-         assign $$fire_dir[1:0] = *fire_dir[ship];
+         assign *_github_id['']x[ship] = >>1$xx_p;
+         assign *_github_id['']y[ship] = >>1$yy_p;
+         assign *_github_id['']energy[ship] = >>1$energy;
+         assign $$xx_acc[3:0] = *_github_id['']x_a[ship];
+         assign $$yy_acc[3:0] = *_github_id['']y_a[ship];
+         assign $$fire_dir[1:0] = *_github_id['']fire_dir[ship];
       //$xx_acc[3:0] = /_top$xx_acc_vect[4 * (ship + 1) - 1 : 4 * ship];
       //$yy_acc[3:0] = /_top$yy_acc_vect[4 * (ship + 1) - 1 : 4 * ship];
       //$fire_dir[1:0] = /_top$fire_dir_vect[2 * (ship + 1) - 1 : 2 * ship];
